@@ -1,0 +1,1571 @@
+<title>Райдер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Unbounded:wght@600;700&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#eceeeb;
+  --surface:#fbfcfa;
+  --surface-2:#f3f5f1;
+  --ink:#15181a;
+  --ink-2:#565c5e;
+  --muted:#868c8c;
+  --line:#dadedb;
+  --line-strong:#c2c8c4;
+  --accent:#a75708;
+  --accent-soft:#f2e2d1;
+  --good:#0ca30c;
+  --warn:#c07a10;
+  --crit:#c0392f;
+  --s1:#2a78d6;
+  --s2:#eb6834;
+  --s3:#1baf7a;
+  --s4:#eda100;
+  --s5:#e87ba4;
+  --grid:#e1e3de;
+  --baseline:#c2c8c4;
+  --shadow:0 1px 2px rgba(16,20,18,.06), 0 8px 24px rgba(16,20,18,.06);
+  --ring:rgba(21,24,26,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0e100f;
+    --surface:#181b1a;
+    --surface-2:#1f2322;
+    --ink:#f1f4f2;
+    --ink-2:#a9b0ad;
+    --muted:#7b8380;
+    --line:#282d2b;
+    --line-strong:#39403d;
+    --accent:#e59331;
+    --accent-soft:#3a2b18;
+    --good:#0ca30c;
+    --warn:#e0a12a;
+    --crit:#e06a60;
+    --s1:#3987e5;
+    --s2:#d95926;
+    --s3:#199e70;
+    --s4:#c98500;
+    --s5:#d55181;
+    --grid:#252a28;
+    --baseline:#39403d;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --ring:rgba(255,255,255,.10);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0e100f;
+  --surface:#181b1a;
+  --surface-2:#1f2322;
+  --ink:#f1f4f2;
+  --ink-2:#a9b0ad;
+  --muted:#7b8380;
+  --line:#282d2b;
+  --line-strong:#39403d;
+  --accent:#e59331;
+  --accent-soft:#3a2b18;
+  --good:#0ca30c;
+  --warn:#e0a12a;
+  --crit:#e06a60;
+  --s1:#3987e5;
+  --s2:#d95926;
+  --s3:#199e70;
+  --s4:#c98500;
+  --s5:#d55181;
+  --grid:#252a28;
+  --baseline:#39403d;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --ring:rgba(255,255,255,.10);
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Commissioner", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important; transition:none!important}}
+
+.mono{font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- header ---------- */
+.top{
+  position:sticky; top:0; z-index:40;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.top-in{
+  max-width:1140px; margin:0 auto; padding:12px 20px;
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+}
+.brand{
+  font-family:"Unbounded", "Commissioner", sans-serif; font-weight:700;
+  font-size:17px; letter-spacing:-.02em; display:flex; align-items:center; gap:9px;
+}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tabs{display:flex; gap:2px; margin-left:auto; flex-wrap:wrap}
+.tab{
+  border:0; background:transparent; color:var(--ink-2); cursor:pointer;
+  padding:7px 12px; border-radius:7px; font-weight:500; font-size:14px;
+}
+.tab:hover{background:var(--surface-2); color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--surface); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line-strong)}
+.btn{
+  border:1px solid var(--line-strong); background:var(--surface); color:var(--ink);
+  padding:8px 13px; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent; background:transparent; color:var(--ink-2); font-weight:500}
+.btn.ghost:hover{background:var(--surface-2); color:var(--ink)}
+.btn.sm{padding:5px 9px; font-size:13px}
+.btn.danger{color:var(--crit); border-color:transparent; background:transparent}
+.btn.danger:hover{background:color-mix(in srgb, var(--crit) 12%, transparent)}
+
+main{max-width:1140px; margin:0 auto; padding:22px 20px 90px}
+.view[hidden]{display:none}
+
+.banner{
+  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color:var(--ink); padding:11px 14px; border-radius:10px; margin-bottom:20px; font-size:14px;
+}
+.banner strong{font-weight:600}
+
+h2.sec{
+  font-family:"Unbounded", sans-serif; font-weight:600; font-size:15px;
+  letter-spacing:-.01em; margin:0 0 2px;
+}
+.sec-sub{color:var(--muted); font-size:13px; margin:0 0 14px}
+.sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px}
+.sec-head .sec-sub{margin:0}
+
+.eyebrow{
+  font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--muted);
+}
+
+/* ---------- cards / tiles ---------- */
+.tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:12px; margin-bottom:22px}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 15px}
+.tile .k{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+.tile .v{font-family:"Unbounded",sans-serif; font-weight:600; font-size:23px; letter-spacing:-.02em; margin-top:6px; line-height:1.15}
+.tile .v small{font-size:14px; font-weight:600; color:var(--ink-2)}
+.tile .d{font-size:12.5px; color:var(--ink-2); margin-top:4px}
+
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 17px; margin-bottom:18px}
+.panel.flush{padding:0; overflow:hidden}
+
+/* ---------- orders list ---------- */
+.olist{display:flex; flex-direction:column}
+.orow{
+  display:grid; grid-template-columns:64px 1fr auto; gap:14px; align-items:center;
+  padding:13px 16px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent;
+  border-left:0; border-right:0; border-top:0; text-align:left; width:100%;
+}
+.orow:last-child{border-bottom:0}
+.orow:hover{background:var(--surface-2)}
+.odate{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-2); line-height:1.3}
+.odate b{display:block; font-size:17px; color:var(--ink); font-weight:600}
+.otitle{font-weight:600; font-size:14.5px}
+.ometa{color:var(--muted); font-size:12.5px; margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.osum{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-weight:600; font-size:15px; white-space:nowrap}
+
+.pill{
+  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
+  padding:2px 8px; border-radius:99px; border:1px solid var(--line-strong); color:var(--ink-2);
+  background:var(--surface-2); white-space:nowrap;
+}
+.pill.s-done{color:var(--good); border-color:color-mix(in srgb, var(--good) 45%, transparent); background:color-mix(in srgb, var(--good) 10%, transparent)}
+.pill.s-confirmed{color:var(--s1); border-color:color-mix(in srgb, var(--s1) 45%, transparent); background:color-mix(in srgb, var(--s1) 10%, transparent)}
+.pill.s-lead{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 45%, transparent); background:color-mix(in srgb, var(--warn) 12%, transparent)}
+.pill.s-cancelled{color:var(--crit); border-color:color-mix(in srgb, var(--crit) 40%, transparent); background:color-mix(in srgb, var(--crit) 8%, transparent)}
+.dotsep{color:var(--line-strong)}
+
+/* ---------- gear grid ---------- */
+.gear-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(258px,1fr)); gap:12px}
+.gear{
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:14px 15px; display:flex; flex-direction:column; gap:10px; cursor:pointer; text-align:left;
+}
+.gear:hover{border-color:var(--line-strong)}
+.gear .gname{font-weight:600; font-size:14.5px; line-height:1.25}
+.gear .gcat{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+.gear .grow{display:flex; justify-content:space-between; font-size:13px; color:var(--ink-2)}
+.gear .grow b{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600}
+.bar{height:7px; border-radius:99px; background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line); overflow:hidden; display:flex}
+.bar i{display:block; height:100%; background:var(--accent); border-radius:99px}
+.bar i.full{background:var(--good)}
+.paid{display:flex; justify-content:space-between; align-items:baseline; font-size:12.5px}
+.paid .pct{font-family:"Unbounded",sans-serif; font-weight:600; font-size:16px; letter-spacing:-.02em}
+.paid .pct.ok{color:var(--good)}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow-x:auto}
+table.t{width:100%; border-collapse:collapse; font-size:13.5px}
+table.t th{
+  text-align:left; font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:11px;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--muted);
+  padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap;
+}
+table.t td{padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:middle}
+table.t tr:last-child td{border-bottom:0}
+table.t td.n{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap}
+.share{display:flex; align-items:center; gap:8px; min-width:120px}
+.share .track{flex:1; height:6px; border-radius:99px; background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line)}
+.share .track i{display:block; height:100%; border-radius:99px; background:var(--s1)}
+
+/* ---------- charts ---------- */
+.chart-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px}
+.chart-head h3{margin:0; font-size:14px; font-weight:600}
+.chart-note{font-size:12.5px; color:var(--ink-2)}
+.chart-note b{font-weight:600; color:var(--ink)}
+svg.chart{display:block; width:100%; height:auto; overflow:visible}
+.legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-2); margin-top:8px}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend i{width:9px; height:9px; border-radius:2px; display:inline-block}
+.tip{
+  position:fixed; z-index:90; pointer-events:none; background:var(--ink); color:var(--bg);
+  padding:6px 9px; border-radius:7px; font-size:12.5px; line-height:1.35; box-shadow:var(--shadow);
+  white-space:nowrap; opacity:0; transition:opacity .1s;
+}
+.tip.on{opacity:1}
+.tip .tv{font-family:"IBM Plex Mono",monospace; font-weight:600}
+
+.seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:2px}
+.seg button{border:0; background:transparent; padding:5px 11px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600; color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* ---------- forms / modal ---------- */
+.scrim{position:fixed; inset:0; background:rgba(10,12,11,.45); z-index:60; display:flex; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto}
+.scrim[hidden]{display:none}
+.sheet{
+  background:var(--surface); border:1px solid var(--line-strong); border-radius:14px;
+  width:100%; max-width:660px; box-shadow:var(--shadow); margin:auto 0;
+}
+.sheet header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 18px; border-bottom:1px solid var(--line)}
+.sheet header h3{margin:0; font-family:"Unbounded",sans-serif; font-size:15px; font-weight:600; letter-spacing:-.01em}
+.sheet .body{padding:16px 18px; display:flex; flex-direction:column; gap:14px}
+.sheet footer{display:flex; gap:10px; justify-content:space-between; align-items:center; padding:14px 18px; border-top:1px solid var(--line); background:var(--surface-2); border-radius:0 0 13px 13px}
+.fgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
+label.f{display:flex; flex-direction:column; gap:5px; font-size:12.5px; color:var(--ink-2); font-weight:500}
+label.f > span{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+input.i, select.i, textarea.i{
+  background:var(--bg); border:1px solid var(--line-strong); border-radius:8px;
+  padding:8px 10px; font-size:14px; width:100%; color:var(--ink);
+}
+textarea.i{resize:vertical; min-height:56px}
+input.i:focus, select.i:focus, textarea.i:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+
+.chips{display:flex; flex-wrap:wrap; gap:7px}
+.chip{
+  border:1px solid var(--line-strong); background:var(--bg); border-radius:99px;
+  padding:5px 11px; font-size:13px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; color:var(--ink);
+}
+.chip:hover{border-color:var(--accent); color:var(--accent)}
+.chip[data-on="1"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600}
+.chip.svc{border-style:dashed}
+
+.lines{display:flex; flex-direction:column; gap:0; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.line{display:grid; grid-template-columns:1fr 68px 96px 84px 30px; gap:8px; align-items:center; padding:8px 10px; border-bottom:1px solid var(--line)}
+.line:last-child{border-bottom:0}
+.line .ln{font-size:13.5px; font-weight:500; line-height:1.25}
+.line .ln em{display:block; font-style:normal; font-size:11px; color:var(--muted); font-family:"IBM Plex Mono",monospace}
+.line input{background:var(--bg); border:1px solid var(--line-strong); border-radius:7px; padding:5px 7px; font-size:13px; width:100%; text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; color:var(--ink)}
+.line .amt{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:13.5px; font-weight:600}
+.line .x{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:16px; line-height:1; padding:4px}
+.line .x:hover{color:var(--crit)}
+.empty-lines{padding:14px; text-align:center; color:var(--muted); font-size:13px}
+.totrow{display:flex; justify-content:space-between; align-items:baseline; padding:10px 12px; background:var(--surface-2); border-top:1px solid var(--line)}
+.totrow .tv{font-family:"Unbounded",sans-serif; font-weight:600; font-size:19px; letter-spacing:-.02em}
+
+.empty{
+  text-align:center; padding:44px 20px; color:var(--ink-2);
+  border:1px dashed var(--line-strong); border-radius:12px; background:var(--surface);
+}
+.empty h3{margin:0 0 6px; font-family:"Unbounded",sans-serif; font-size:15px; font-weight:600; color:var(--ink)}
+.empty p{margin:0 0 14px; font-size:13.5px}
+
+.hint{font-size:12.5px; color:var(--muted)}
+.rowflex{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.savebar{font-size:12.5px; color:var(--muted); display:flex; align-items:center; gap:7px}
+.savebar i{width:7px;height:7px;border-radius:50%;background:var(--good);display:inline-block}
+.savebar.off i{background:var(--muted)}
+
+/* ---------- calendar ---------- */
+.cal-top{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.cal-title{font-family:"Unbounded",sans-serif; font-size:16px; font-weight:600; letter-spacing:-.02em; min-width:150px}
+.navbtn{border:1px solid var(--line-strong); background:var(--surface); width:32px; height:32px; border-radius:8px; cursor:pointer; line-height:1; font-size:15px}
+.navbtn:hover{background:var(--surface-2)}
+.cal{display:grid; grid-template-columns:repeat(7,1fr); border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--surface)}
+.cal .dow{padding:8px 10px; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); background:var(--surface-2)}
+.cal .day{min-height:98px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:6px 6px 8px; display:flex; flex-direction:column; gap:3px; cursor:pointer; background:var(--surface); text-align:left}
+.cal .day:nth-child(7n){border-right:0}
+.cal .day:hover{background:var(--surface-2)}
+.cal .day.out{background:var(--bg)}
+.cal .day.out .dn{opacity:.45}
+.cal .dn{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-2); align-self:flex-start; padding:1px 5px; border-radius:99px}
+.cal .day.today .dn{background:var(--accent); color:#fff; font-weight:600}
+.cal .ev{display:block; width:100%; text-align:left; border:0; border-left:3px solid var(--muted); border-radius:5px; padding:3px 6px; font-size:11.5px; line-height:1.3; cursor:pointer; background:var(--surface-2); color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.cal .ev.s-confirmed{border-left-color:var(--s1)}
+.cal .ev.s-done{border-left-color:var(--good)}
+.cal .ev.s-lead{border-left-color:var(--warn)}
+.cal .ev.s-cancelled{border-left-color:var(--crit); opacity:.55; text-decoration:line-through}
+.cal .more{font-size:11px; color:var(--muted); font-family:"IBM Plex Mono",monospace}
+.cal .day.clash{box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--crit) 55%, transparent)}
+.sync{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap}
+.sync .msg{font-size:13px; color:var(--ink-2); max-width:560px}
+.sync .msg b{color:var(--ink)}
+.legend-cal{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-2); margin-top:10px}
+.legend-cal span{display:inline-flex; align-items:center; gap:6px}
+.legend-cal i{width:3px; height:12px; border-radius:2px; display:inline-block}
+
+.mlist{display:flex; flex-direction:column}
+.mrow{display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center; padding:11px 14px; border-bottom:1px solid var(--line); cursor:pointer; background:transparent; border-left:0; border-right:0; border-top:0; width:100%; text-align:left}
+.mrow:last-child{border-bottom:0}
+.mrow:hover{background:var(--surface-2)}
+.mrow .md{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); line-height:1.25}
+.mrow .md b{display:block; font-size:15px; color:var(--ink); font-weight:600}
+.mrow .mt{font-weight:600; font-size:14px; line-height:1.3}
+.mrow .mm{color:var(--muted); font-size:12.5px; margin-top:2px}
+.mrow .ms{text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-weight:600; font-size:14px; white-space:nowrap}
+
+@media (max-width:640px){
+  .cal .day{min-height:60px; padding:4px 3px 6px; gap:3px; align-items:center}
+  .cal .ev{font-size:0; line-height:0; height:6px; width:80%; padding:0; border-left:0; border-radius:99px; background:var(--muted); overflow:hidden}
+  .cal .ev.s-confirmed{background:var(--s1)}
+  .cal .ev.s-done{background:var(--good)}
+  .cal .ev.s-lead{background:var(--warn)}
+  .cal .ev.s-cancelled{background:var(--crit); text-decoration:none}
+  .cal .dn{align-self:center}
+  .cal .more{font-size:10px}
+  .cal .dow{padding:6px 2px; font-size:9.5px; text-align:center}
+  .cal-title{min-width:0; font-size:15px}
+  .sheet footer{position:sticky; bottom:0}
+}
+@media (max-width:640px){
+  .top-in{padding:10px 14px; gap:10px}
+  .tabs{order:3; width:100%; margin-left:0}
+  .tab{flex:1; text-align:center}
+  main{padding:16px 14px 80px}
+  .orow{grid-template-columns:54px 1fr; row-gap:6px}
+  .osum{grid-column:2; text-align:left}
+  .line{grid-template-columns:1fr 56px 84px 30px; row-gap:6px}
+  .line .amt{grid-column:1/-1; text-align:right}
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><span class="dot"></span>Райдер</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="orders" aria-selected="true">Замовлення</button>
+      <button class="tab" role="tab" data-view="calendar" aria-selected="false">Календар</button>
+      <button class="tab" role="tab" data-view="gear" aria-selected="false">Обладнання</button>
+      <button class="tab" role="tab" data-view="clients" aria-selected="false">Замовники</button>
+      <button class="tab" role="tab" data-view="stats" aria-selected="false">Аналітика</button>
+    </nav>
+    <button class="btn primary" id="btnNew">＋ Замовлення</button>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="demoBanner" hidden>
+    <strong>Це приклад.</strong>
+    <span>Дані нижче — вигадані, щоб показати, як усе виглядає в роботі. Створи перше замовлення або першу картку обладнання — приклад зникне.</span>
+  </div>
+  <div class="banner" id="offlineBanner" hidden>
+    <strong>Збереження недоступне.</strong>
+    <span>Сторінка відкрита там, де немає сховища — зміни не збережуться. Відкрий артефакт у Claude, щоб працювати з реальними даними.</span>
+  </div>
+
+  <section class="view" id="view-orders"></section>
+  <section class="view" id="view-calendar" hidden></section>
+  <section class="view" id="view-gear" hidden></section>
+  <section class="view" id="view-clients" hidden></section>
+  <section class="view" id="view-stats" hidden></section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="tip" id="tip"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================== helpers ============================== */
+const $ = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+const uid = ()=> Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const CUR = {UAH:"₴", USD:"$"};
+const nf = new Intl.NumberFormat("uk-UA",{maximumFractionDigits:0});
+const money = (v,c)=> CUR[c] + " " + nf.format(Math.round(v||0));
+const MONTHS = ["січ","лют","бер","кві","тра","чер","лип","сер","вер","жов","лис","гру"];
+const MONTHS_FULL = ["січня","лютого","березня","квітня","травня","червня","липня","серпня","вересня","жовтня","листопада","грудня"];
+const STATUS = {lead:"Заявка", confirmed:"Підтверджено", done:"Виконано", cancelled:"Скасовано"};
+const today = ()=> new Date().toISOString().slice(0,10);
+const daysBetween = (a,b)=> Math.round((new Date(b) - new Date(a))/86400000);
+const plural = (n,a,b,c)=>{const n1=n%10,n2=n%100; return n1===1&&n2!==11?a : (n1>=2&&n1<=4&&(n2<10||n2>=20)?b:c);};
+const vyizd = n => n+" "+plural(n,"виїзд","виїзди","виїздів");
+
+/* ============================== state ============================== */
+let db = null;
+let state = {orders:[], gear:[], clients:[], settings:{rate:0}, demo:false, ready:false};
+let curView = "orders";
+let statsCur = "UAH";
+
+/* ============================== demo data ============================== */
+function demoData(){
+  const y = new Date().getFullYear();
+  const d = (m,day)=> new Date(Date.UTC(m>new Date().getMonth()+1? y-1:y, m-1, day)).toISOString().slice(0,10);
+  const gear = [
+    {id:"g1", name:"Pioneer DDJ-1000", category:"DJ-пульт", qty:1, purchaseDate:d(3,12), purchasePrice:1150, purchaseCurrency:"USD", rateUAH:2500, rateUSD:60, status:"active"},
+    {id:"g2", name:"Колонки RCF ART 912-A", category:"Звук", qty:2, purchaseDate:d(5,4), purchasePrice:76000, purchaseCurrency:"UAH", rateUAH:1800, rateUSD:45, status:"active"},
+    {id:"g3", name:"Сабвуфер RCF SUB 705", category:"Звук", qty:1, purchaseDate:d(7,20), purchasePrice:41000, purchaseCurrency:"UAH", rateUAH:1200, rateUSD:30, status:"active"},
+    {id:"g4", name:"Світло Chauvet SlimPAR", category:"Світло", qty:4, purchaseDate:d(2,18), purchasePrice:12000, purchaseCurrency:"UAH", rateUAH:350, rateUSD:9, status:"active"},
+    {id:"g5", name:"Дим-машина Antari Z-800", category:"Ефекти", qty:1, purchaseDate:d(6,9), purchasePrice:9500, purchaseCurrency:"UAH", rateUAH:600, rateUSD:15, status:"active"},
+    {id:"g6", name:"Радіомікрофони Shure BLX", category:"Звук", qty:2, purchaseDate:d(4,2), purchasePrice:18000, purchaseCurrency:"UAH", rateUAH:700, rateUSD:18, status:"active"}
+  ];
+  const clients = [
+    {id:"c1", name:"Промо-агенція Vector", type:"agency"},
+    {id:"c2", name:"Клуб Atlas", type:"venue"},
+    {id:"c3", name:"Оксана (весілля)", type:"direct"},
+    {id:"c4", name:"Ігор, промоутер", type:"promoter"}
+  ];
+  const mk = (id, date, clientId, title, kind, currency, status, items, expenses)=>({
+    id, date, clientId, clientName:(clients.find(c=>c.id===clientId)||{}).name||"", title, kind, currency, status, items, expenses:expenses||0
+  });
+  const orders = [
+    mk("o1", d(4,6),"c2","Пʼятниця в Atlas","set","UAH","done",[
+      {type:"service", name:"Діджей-сет 4 год", qty:1, price:6000},
+      {type:"gear", equipmentId:"g4", name:"Світло Chauvet SlimPAR", qty:4, price:350}
+    ],400),
+    mk("o2", d(5,17),"c1","Відкриття шоуруму","rent+set","UAH","done",[
+      {type:"gear", equipmentId:"g2", name:"Колонки RCF ART 912-A", qty:2, price:1800},
+      {type:"gear", equipmentId:"g3", name:"Сабвуфер RCF SUB 705", qty:1, price:1200},
+      {type:"gear", equipmentId:"g1", name:"Pioneer DDJ-1000", qty:1, price:2500},
+      {type:"service", name:"Доставка і монтаж", qty:1, price:1500},
+      {type:"service", name:"Діджей-сет 3 год", qty:1, price:5000}
+    ],900),
+    mk("o3", d(6,21),"c3","Весілля, ресторан «Тераса»","rent+set","USD","done",[
+      {type:"gear", equipmentId:"g2", name:"Колонки RCF ART 912-A", qty:2, price:45},
+      {type:"gear", equipmentId:"g3", name:"Сабвуфер RCF SUB 705", qty:1, price:30},
+      {type:"gear", equipmentId:"g6", name:"Радіомікрофони Shure BLX", qty:2, price:18},
+      {type:"gear", equipmentId:"g4", name:"Світло Chauvet SlimPAR", qty:4, price:9},
+      {type:"service", name:"Робота на вечірці 6 год", qty:1, price:250}
+    ],40),
+    mk("o4", d(7,12),"c4","Open-air на базі відпочинку","rent","UAH","done",[
+      {type:"gear", equipmentId:"g2", name:"Колонки RCF ART 912-A", qty:2, price:2000},
+      {type:"gear", equipmentId:"g3", name:"Сабвуфер RCF SUB 705", qty:1, price:1400},
+      {type:"gear", equipmentId:"g5", name:"Дим-машина Antari Z-800", qty:1, price:600},
+      {type:"service", name:"Доставка і монтаж", qty:1, price:2000}
+    ],1200),
+    mk("o5", d(7,26),"c2","Літня тераса Atlas","set","UAH","done",[
+      {type:"service", name:"Діджей-сет 4 год", qty:1, price:6500},
+      {type:"gear", equipmentId:"g4", name:"Світло Chauvet SlimPAR", qty:4, price:350}
+    ],0),
+    mk("o6", d(8,9),"c1","Корпоратив, конференц-хол","rent+set","UAH","done",[
+      {type:"gear", equipmentId:"g2", name:"Колонки RCF ART 912-A", qty:2, price:1800},
+      {type:"gear", equipmentId:"g6", name:"Радіомікрофони Shure BLX", qty:2, price:700},
+      {type:"gear", equipmentId:"g1", name:"Pioneer DDJ-1000", qty:1, price:2500},
+      {type:"service", name:"Доставка і монтаж", qty:1, price:1200},
+      {type:"service", name:"Робота на заході 5 год", qty:1, price:7000}
+    ],800),
+    mk("o7", d(8,30),"c3","Річниця весілля","rent","USD","confirmed",[
+      {type:"gear", equipmentId:"g2", name:"Колонки RCF ART 912-A", qty:2, price:45},
+      {type:"gear", equipmentId:"g6", name:"Радіомікрофони Shure BLX", qty:1, price:18}
+    ],0),
+    mk("o8", d(9,13),"c4","Клубна вечірка, вересень","set","UAH","lead",[
+      {type:"service", name:"Діджей-сет 3 год", qty:1, price:6000}
+    ],0)
+  ];
+  return {gear, clients, orders};
+}
+
+/* ============================== derived ============================== */
+function orderTotal(o){
+  return (o.items||[]).reduce((s,it)=> s + (Number(it.qty)||0)*(Number(it.price)||0), 0);
+}
+function orderNet(o){ return orderTotal(o) - (Number(o.expenses)||0); }
+function gearRevenue(o){
+  return (o.items||[]).filter(i=>i.type==="gear").reduce((s,it)=> s + (Number(it.qty)||0)*(Number(it.price)||0), 0);
+}
+function counted(o){ return o.status === "done"; }
+
+function gearEarnings(gearId){
+  const out = {UAH:0, USD:0, uses:0, units:0, last:null};
+  state.orders.forEach(o=>{
+    if(!counted(o)) return;
+    (o.items||[]).forEach(it=>{
+      if(it.type!=="gear" || it.equipmentId!==gearId) return;
+      out[o.currency] = (out[o.currency]||0) + (Number(it.qty)||0)*(Number(it.price)||0);
+      out.uses++; out.units += (Number(it.qty)||0);
+      if(!out.last || o.date > out.last) out.last = o.date;
+    });
+  });
+  return out;
+}
+function payback(g){
+  const e = gearEarnings(g.id);
+  const cur = g.purchaseCurrency || "UAH";
+  const price = Number(g.purchasePrice)||0;
+  const other = cur === "UAH" ? "USD" : "UAH";
+  const earnedSame = e[cur]||0;
+  const earnedOther = e[other]||0;
+  const rate = Number(state.settings.rate)||0;
+  const converted = (rate>0 && earnedOther) ? (cur==="UAH" ? earnedOther*rate : earnedOther/rate) : 0;
+  const earned = earnedSame + converted;
+  const pct = price>0 ? Math.min(999, Math.round(earned/price*100)) : 0;
+  const perUse = e.uses>0 ? earned/e.uses : 0;
+  const left = Math.max(0, price - earned);
+  const usesLeft = perUse>0 ? Math.ceil(left/perUse) : null;
+  return {cur, other, price, earned, earnedSame, earnedOther, converted, pct, uses:e.uses, units:e.units, last:e.last, usesLeft, left};
+}
+
+function clientStats(){
+  const map = new Map();
+  state.orders.forEach(o=>{
+    const key = o.clientId || ("n:"+(o.clientName||"—"));
+    if(!map.has(key)) map.set(key, {key, name:o.clientName||"Без замовника", orders:0, done:0, UAH:0, USD:0, last:null, first:null});
+    const m = map.get(key);
+    m.orders++;
+    if(counted(o)){ m.done++; m[o.currency] += orderTotal(o); }
+    if(!m.last || o.date>m.last) m.last = o.date;
+    if(!m.first || o.date<m.first) m.first = o.date;
+  });
+  return Array.from(map.values());
+}
+
+function monthlySeries(months){
+  const now = new Date(); const out = [];
+  for(let i=months-1;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    out.push({y:d.getFullYear(), m:d.getMonth(), label:MONTHS[d.getMonth()], count:0, UAH:0, USD:0, cancelled:0});
+  }
+  state.orders.forEach(o=>{
+    if(!o.date) return;
+    const d = new Date(o.date);
+    const b = out.find(x=>x.y===d.getFullYear() && x.m===d.getMonth());
+    if(!b) return;
+    if(o.status==="cancelled"){ b.cancelled++; return; }
+    b.count++;
+    if(counted(o)) b[o.currency] += orderTotal(o);
+  });
+  return out;
+}
+
+/* ============================== charts ============================== */
+const tip = $("#tip");
+function showTip(e, html){
+  tip.innerHTML = html; tip.classList.add("on");
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 12, y = e.clientY - r.height - 10;
+  if(x + r.width > window.innerWidth - 8) x = window.innerWidth - r.width - 8;
+  if(y < 8) y = e.clientY + 16;
+  tip.style.left = x+"px"; tip.style.top = y+"px";
+}
+function hideTip(){ tip.classList.remove("on"); }
+
+function barChart(data, opts){
+  opts = opts || {};
+  const W = 720, H = opts.height||190, padL = 44, padR = 8, padT = 12, padB = 26;
+  const max = Math.max(1, ...data.map(d=>d.value));
+  const nice = niceMax(max);
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const bw = Math.min(46, iw/data.length * 0.62);
+  const step = iw/data.length;
+  let g = "";
+  const ticks = [0, nice/2, nice];
+  ticks.forEach(t=>{
+    const y = padT + ih - (t/nice)*ih;
+    g += `<line x1="${padL}" x2="${W-padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${padL-8}" y="${(y+4).toFixed(1)}" text-anchor="end" fill="var(--muted)" font-size="10.5" font-family="IBM Plex Mono, monospace">${opts.tickFmt?opts.tickFmt(t):nf.format(t)}</text>`;
+  });
+  let bars = "";
+  data.forEach((d,i)=>{
+    const x = padL + step*i + (step-bw)/2;
+    const h = (d.value/nice)*ih;
+    const y = padT + ih - h;
+    const r = Math.min(4, h/2);
+    if(h > 0.5){
+      bars += `<path d="M${x.toFixed(1)} ${(padT+ih).toFixed(1)} L${x.toFixed(1)} ${(y+r).toFixed(1)} Q${x.toFixed(1)} ${y.toFixed(1)} ${(x+r).toFixed(1)} ${y.toFixed(1)} L${(x+bw-r).toFixed(1)} ${y.toFixed(1)} Q${(x+bw).toFixed(1)} ${y.toFixed(1)} ${(x+bw).toFixed(1)} ${(y+r).toFixed(1)} L${(x+bw).toFixed(1)} ${(padT+ih).toFixed(1)} Z" fill="${opts.color||'var(--s1)'}"/>`;
+    }
+    bars += `<rect class="hit" x="${(padL+step*i).toFixed(1)}" y="${padT}" width="${step.toFixed(1)}" height="${ih}" fill="transparent" data-i="${i}"/>`;
+    bars += `<text x="${(x+bw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" fill="var(--muted)" font-size="10.5" font-family="IBM Plex Mono, monospace">${esc(d.label)}</text>`;
+  });
+  const svg = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria||'Графік')}">
+    <line x1="${padL}" x2="${W-padR}" y1="${padT+ih}" y2="${padT+ih}" stroke="var(--baseline)" stroke-width="1"/>
+    ${g}${bars}</svg>`;
+  return svg;
+}
+function niceMax(v){
+  if(v<=0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v/mag;
+  const s = n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10;
+  return s*mag;
+}
+function wireBars(root, data, fmt){
+  $$(".hit", root).forEach(h=>{
+    h.style.cursor = "default";
+    h.addEventListener("mousemove", e=>{
+      const d = data[+h.dataset.i];
+      showTip(e, fmt(d));
+    });
+    h.addEventListener("mouseleave", hideTip);
+  });
+}
+
+/* ============================== views ============================== */
+function render(){
+  $$(".tab").forEach(t=> t.setAttribute("aria-selected", String(t.dataset.view===curView)));
+  $$(".view").forEach(v=> v.hidden = (v.id !== "view-"+curView));
+  $("#demoBanner").hidden = !state.demo || !state.ready;
+  if(curView==="orders") renderOrders();
+  if(curView==="calendar") renderCalendar();
+  if(curView==="gear") renderGear();
+  if(curView==="clients") renderClients();
+  if(curView==="stats") renderStats();
+}
+
+function renderOrders(){
+  const el = $("#view-orders");
+  const orders = state.orders.slice().sort((a,b)=> (b.date||"").localeCompare(a.date||""));
+  if(!orders.length){
+    el.innerHTML = `<div class="empty"><h3>Ще жодного замовлення</h3><p>Натисни «＋ Замовлення», обери картки обладнання — сума порахується сама.</p><button class="btn primary" data-act="new">Створити перше замовлення</button></div>`;
+    return;
+  }
+  const upcoming = orders.filter(o=> o.date >= today() && o.status!=="cancelled" && o.status!=="done");
+  const doneOrders = state.orders.filter(counted);
+  const sum = c => doneOrders.filter(o=>o.currency===c).reduce((s,o)=>s+orderTotal(o),0);
+  const thisYear = new Date().getFullYear();
+  const yearDone = doneOrders.filter(o=> new Date(o.date).getFullYear()===thisYear);
+  const ySum = c => yearDone.filter(o=>o.currency===c).reduce((s,o)=>s+orderTotal(o),0);
+  const lastDone = doneOrders.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
+  const idle = lastDone ? daysBetween(lastDone.date, today()) : null;
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="k">Дохід ${thisYear}, ₴</div><div class="v num">${nf.format(ySum("UAH"))} <small>₴</small></div><div class="d">за ${yearDone.filter(o=>o.currency==="UAH").length} ${plural(yearDone.filter(o=>o.currency==="UAH").length,"замовлення","замовлення","замовлень")}</div></div>
+    <div class="tile"><div class="k">Дохід ${thisYear}, $</div><div class="v num">${nf.format(ySum("USD"))} <small>$</small></div><div class="d">за ${yearDone.filter(o=>o.currency==="USD").length} ${plural(yearDone.filter(o=>o.currency==="USD").length,"замовлення","замовлення","замовлень")}</div></div>
+    <div class="tile"><div class="k">Попереду</div><div class="v num">${upcoming.length}</div><div class="d">${upcoming.length? "найближче — "+fmtDate(upcoming.sort((a,b)=>a.date.localeCompare(b.date))[0].date) : "нічого не заплановано"}</div></div>
+    <div class="tile"><div class="k">Без роботи</div><div class="v num">${idle==null?"—":idle} <small>${idle==null?"":plural(idle,"день","дні","днів")}</small></div><div class="d">${lastDone? "останній виїзд "+fmtDate(lastDone.date) : "ще не було виконаних"}</div></div>
+  </div>`;
+
+  html += `<div class="sec-head"><div><h2 class="sec">Усі замовлення</h2><p class="sec-sub">${orders.length} ${plural(orders.length,"запис","записи","записів")} · натисни, щоб відкрити</p></div>
+    <button class="btn sm" data-act="new">＋ Нове</button></div>`;
+  html += `<div class="panel flush"><div class="olist">` + orders.map(o=>{
+    const d = new Date(o.date);
+    const gearCount = (o.items||[]).filter(i=>i.type==="gear").reduce((s,i)=>s+(Number(i.qty)||0),0);
+    const svc = (o.items||[]).filter(i=>i.type==="service").length;
+    return `<button class="orow" data-open="${esc(o.id)}">
+      <div class="odate"><b>${d.getDate()}</b>${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</div>
+      <div><div class="otitle">${esc(o.title||"Без назви")}</div>
+        <div class="ometa"><span>${esc(o.clientName||"—")}</span><span class="dotsep">·</span>
+          <span>${gearCount? gearCount+" "+plural(gearCount,"одиниця техніки","одиниці техніки","одиниць техніки")+(svc? " + ":"") : ""}${svc? svc+" "+plural(svc,"послуга","послуги","послуг"):""}${!gearCount&&!svc? "порожнє":""}</span>
+          <span class="pill s-${esc(o.status)}">${STATUS[o.status]||o.status}</span></div></div>
+      <div class="osum">${money(orderTotal(o), o.currency)}</div>
+    </button>`;
+  }).join("") + `</div></div>`;
+  el.innerHTML = html;
+}
+
+function fmtDate(s){
+  if(!s) return "—";
+  const d = new Date(s);
+  return d.getDate()+" "+MONTHS_FULL[d.getMonth()];
+}
+
+function renderGear(){
+  const el = $("#view-gear");
+  if(!state.gear.length){
+    el.innerHTML = `<div class="empty"><h3>Обладнання ще не додане</h3><p>Створи картку на кожну одиницю: ціна покупки і дефолтна ціна оренди — з цього рахується окупність.</p><button class="btn primary" data-act="newgear">Додати обладнання</button></div>`;
+    return;
+  }
+  const items = state.gear.map(g=>({g, p:payback(g)})).sort((a,b)=> b.p.pct - a.p.pct);
+  const paidOff = items.filter(x=>x.p.pct>=100).length;
+  const invested = {UAH:0, USD:0};
+  state.gear.forEach(g=> invested[g.purchaseCurrency||"UAH"] += Number(g.purchasePrice)||0);
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="k">Одиниць у парку</div><div class="v num">${state.gear.length}</div><div class="d">${paidOff} ${plural(paidOff,"окупилась","окупились","окупились")} повністю</div></div>
+    <div class="tile"><div class="k">Вкладено, ₴</div><div class="v num">${nf.format(invested.UAH)} <small>₴</small></div><div class="d">за цінами покупки</div></div>
+    <div class="tile"><div class="k">Вкладено, $</div><div class="v num">${nf.format(invested.USD)} <small>$</small></div><div class="d">за цінами покупки</div></div>
+  </div>`;
+  html += rateBlock();
+  html += `<div class="sec-head"><div><h2 class="sec">Парк обладнання</h2><p class="sec-sub">Окупність рахується тільки з виконаних замовлень, у валюті покупки</p></div>
+    <button class="btn sm" data-act="newgear">＋ Картка</button></div>`;
+  html += `<div class="gear-grid">` + items.map(({g,p})=>{
+    const full = p.pct>=100;
+    return `<button class="gear" data-opengear="${esc(g.id)}">
+      <div><div class="gcat">${esc(g.category||"без категорії")}${g.qty>1? " · "+g.qty+" шт":""}</div>
+        <div class="gname">${esc(g.name)}</div></div>
+      <div class="paid"><span class="pct ${full?"ok":""}">${p.pct}%</span>
+        <span class="hint">${full? "окупилось" : (p.usesLeft!=null? "ще ~"+vyizd(p.usesLeft) : (p.uses? "заробіток в іншій валюті" : "ще не здавалось"))}</span></div>
+      <div class="bar"><i class="${full?"full":""}" style="width:${Math.min(100,p.pct)}%"></i></div>
+      <div class="grow"><span>Куплено за</span><b>${money(p.price, p.cur)}</b></div>
+      <div class="grow"><span>Зароблено</span><b>${money(p.earnedSame, p.cur)}${p.earnedOther? " + "+money(p.earnedOther,p.other):""}</b></div>
+      <div class="grow"><span>Здавалось</span><b>${p.uses}× · ${p.units} од.</b></div>
+    </button>`;
+  }).join("") + `</div>`;
+  el.innerHTML = html;
+}
+
+/* ============================== calendar ============================== */
+let calCursor = null;
+const DOW = ["пн","вт","ср","чт","пт","сб","нд"];
+
+function ymd(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+function clashDays(){
+  // same equipment booked twice on the same date
+  const byDate = new Map();
+  state.orders.forEach(o=>{
+    if(o.status==="cancelled" || !o.date) return;
+    if(!byDate.has(o.date)) byDate.set(o.date, []);
+    byDate.get(o.date).push(o);
+  });
+  const out = new Map();
+  byDate.forEach((os, date)=>{
+    if(os.length<2) return;
+    const seen = new Map();
+    const hits = [];
+    os.forEach(o=>(o.items||[]).forEach(it=>{
+      if(it.type!=="gear") return;
+      const need = (Number(it.qty)||0) + (seen.get(it.equipmentId)||0);
+      const g = state.gear.find(x=>x.id===it.equipmentId);
+      const have = g? (Number(g.qty)||1) : 1;
+      seen.set(it.equipmentId, need);
+      if(need>have && !hits.includes(it.name)) hits.push(it.name);
+    }));
+    if(hits.length) out.set(date, hits);
+  });
+  return out;
+}
+
+function renderCalendar(){
+  const el = $("#view-calendar");
+  const now = new Date();
+  if(!calCursor) calCursor = {y:now.getFullYear(), m:now.getMonth()};
+  const first = new Date(calCursor.y, calCursor.m, 1);
+  const startOffset = (first.getDay()+6)%7; // monday-first
+  const gridStart = new Date(calCursor.y, calCursor.m, 1-startOffset);
+  const clashes = clashDays();
+  const todayStr = ymd(now);
+
+  const byDate = new Map();
+  state.orders.forEach(o=>{ if(!o.date) return; if(!byDate.has(o.date)) byDate.set(o.date,[]); byDate.get(o.date).push(o); });
+
+  let cells = DOW.map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate()+i);
+    const key = ymd(d);
+    const out = d.getMonth()!==calCursor.m;
+    const list = (byDate.get(key)||[]).sort((a,b)=>(a.title||"").localeCompare(b.title||""));
+    const clash = clashes.has(key);
+    const shown = list.slice(0,3).map(o=>`<button class="ev s-${esc(o.status)}" data-open="${esc(o.id)}" title="${esc(o.title)} · ${esc(o.clientName||"")} · ${money(orderTotal(o),o.currency)}">${esc(o.title||"Замовлення")}</button>`).join("");
+    cells += `<div class="day${out?" out":""}${key===todayStr?" today":""}${clash?" clash":""}" data-newday="${key}" title="${clash? "Конфлікт: "+esc(clashes.get(key).join(", ")) : ""}">
+      <span class="dn">${d.getDate()}</span>${shown}${list.length>3?`<span class="more">ще ${list.length-3}</span>`:""}</div>`;
+  }
+
+  const monthOrders = state.orders.filter(o=>{
+    if(!o.date) return false; const d=new Date(o.date);
+    return d.getFullYear()===calCursor.y && d.getMonth()===calCursor.m && o.status!=="cancelled";
+  });
+  const busyDays = new Set(monthOrders.map(o=>o.date)).size;
+
+  let html = `<div class="cal-top">
+      <button class="navbtn" data-cal="-1" aria-label="Попередній місяць">‹</button>
+      <button class="navbtn" data-cal="1" aria-label="Наступний місяць">›</button>
+      <div class="cal-title">${monthName(calCursor.m)} ${calCursor.y}</div>
+      <button class="btn sm" data-cal="0">Сьогодні</button>
+      <span class="hint" style="margin-left:auto">${busyDays} ${plural(busyDays,"зайнятий день","зайнятих дні","зайнятих днів")} у цьому місяці</span>
+    </div>`;
+  html += gcalPanel();
+  html += `<div class="cal">${cells}</div>`;
+  html += `<div class="legend-cal">
+    <span><i style="background:var(--warn)"></i>Заявка</span>
+    <span><i style="background:var(--s1)"></i>Підтверджено</span>
+    <span><i style="background:var(--good)"></i>Виконано</span>
+    <span><i style="background:var(--crit)"></i>Скасовано</span>
+    <span class="hint">Клік по порожньому дню створює замовлення на цю дату</span></div>`;
+
+  const monthAll = state.orders.filter(o=>{
+    if(!o.date) return false; const d=new Date(o.date);
+    return d.getFullYear()===calCursor.y && d.getMonth()===calCursor.m;
+  }).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  if(monthAll.length){
+    const sums = {UAH:0, USD:0};
+    monthAll.forEach(o=>{ if(o.status!=="cancelled") sums[o.currency]+=orderTotal(o); });
+    html += `<div class="sec-head" style="margin-top:22px"><div><h2 class="sec">${monthName(calCursor.m)} — список</h2>
+      <p class="sec-sub">${[sums.UAH?money(sums.UAH,"UAH"):null, sums.USD?money(sums.USD,"USD"):null].filter(Boolean).join(" · ")||"без сум"}</p></div></div>`;
+    html += `<div class="panel flush"><div class="mlist">` + monthAll.map(o=>{
+      const d = new Date(o.date);
+      return `<button class="mrow" data-open="${esc(o.id)}">
+        <div class="md"><b>${d.getDate()}</b>${DOW[(d.getDay()+6)%7]}</div>
+        <div><div class="mt">${esc(o.title||"Замовлення")}</div>
+          <div class="mm">${esc(o.clientName||"—")}</div></div>
+        <div class="ms">${money(orderTotal(o), o.currency)}<div style="margin-top:4px"><span class="pill s-${esc(o.status)}">${STATUS[o.status]||o.status}</span></div></div>
+      </button>`;
+    }).join("") + `</div></div>`;
+  }
+
+  const clashList = Array.from(clashes.entries()).filter(([date])=>{
+    const d=new Date(date); return d.getFullYear()===calCursor.y && d.getMonth()===calCursor.m;
+  });
+  if(clashList.length){
+    html += `<div class="panel" style="margin-top:16px; border-color:color-mix(in srgb, var(--crit) 45%, transparent)">
+      <b style="font-size:13.5px; color:var(--crit)">Техніка задвоєна</b>
+      <div class="hint" style="margin-top:6px">На цих датах одну й ту саму позицію обіцяно більше разів, ніж у тебе одиниць:</div>
+      <ul style="margin:8px 0 0; padding-left:18px; font-size:13.5px">${clashList.map(([date,items])=>`<li>${fmtDate(date)} — ${esc(items.join(", "))}</li>`).join("")}</ul></div>`;
+  }
+  el.innerHTML = html;
+}
+function monthName(m){
+  return ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"][m];
+}
+
+/* ============================== google calendar ============================== */
+const GCAL = "Google Calendar";
+let mcpCap = null;
+let gcal = {available:false, checked:false, syncing:false, error:null, note:null};
+
+function orderSig(o){
+  return [o.date, o.title, o.clientName, o.status, o.currency, orderTotal(o),
+    (o.items||[]).map(i=>i.name+"×"+i.qty).join("|")].join("§");
+}
+function gcalSummary(o){
+  const mark = o.status==="lead" ? "? " : "";
+  return mark + (o.title||"Замовлення") + (o.clientName? " · "+o.clientName : "");
+}
+function gcalDescription(o){
+  const gearLines = (o.items||[]).filter(i=>i.type==="gear").map(i=>`• ${i.name} × ${i.qty}`);
+  const svcLines = (o.items||[]).filter(i=>i.type==="service").map(i=>`• ${i.name}`);
+  const parts = [];
+  parts.push(`Статус: ${STATUS[o.status]||o.status}`);
+  parts.push(`Сума: ${money(orderTotal(o), o.currency)}`);
+  if(gearLines.length) parts.push("Обладнання:\n"+gearLines.join("\n"));
+  if(svcLines.length) parts.push("Робота:\n"+svcLines.join("\n"));
+  if(o.notes) parts.push("Нотатки: "+o.notes);
+  parts.push("— з застосунку «Райдер»");
+  return parts.join("\n\n");
+}
+function gcalArgs(o){
+  return {
+    summary: gcalSummary(o),
+    description: gcalDescription(o),
+    startTime: o.date+"T00:00:00Z",
+    endTime: nextDay(o.date)+"T00:00:00Z",
+    allDay: true,
+    colorId: o.status==="done" ? "10" : o.status==="lead" ? "5" : "9",
+    availability: o.status==="lead" ? "AVAILABILITY_FREE" : "AVAILABILITY_BUSY",
+    notificationLevel: "NONE"
+  };
+}
+function nextDay(s){
+  const d = new Date(s+"T00:00:00Z");
+  d.setUTCDate(d.getUTCDate()+1);
+  return d.toISOString().slice(0,10);
+}
+function gcalErrorText(code, message){
+  switch(code){
+    case "needs_reauth": return "Google Календар відключився. Перепідключи його в claude.ai → Налаштування → Конектори.";
+    case "server_not_connected": return "Google Календар не підключений до цього акаунта. Додай його в claude.ai → Налаштування → Конектори.";
+    case "selection_required": return "У тебе кілька підключень Google Календаря — обери одне в підказці claude.ai і спробуй ще раз.";
+    case "blocked_by_policy":
+    case "approval_required": return "Політика акаунта не пропускає запис у календар.";
+    case "not_in_manifest": return "Ця версія сторінки не має доступу до календаря.";
+    case "server_unavailable": return "Google Календар зараз не відповідає. Спробуй за хвилину.";
+    case "tool_error": return "Календар відхилив запис: " + (message||"без деталей");
+    case "not_granted":
+    case "capability_disabled":
+    case "capability_removed": return "Доступ до конекторів вимкнений для цієї сторінки.";
+    default: return "Не вдалося записати в календар" + (message? ": "+message : ".");
+  }
+}
+async function gcalInit(){
+  gcal.checked = true;
+  try{ mcpCap = await window.claude?.use?.("mcp"); }catch(_){ mcpCap = null; }
+  if(!mcpCap){ gcal.available=false; render(); return; }
+  try{
+    const list = await mcpCap.listTools();
+    const srv = (list.servers||[]).find(s=>s.server===GCAL);
+    gcal.available = !!(srv && (srv.tools||[]).length);
+    if(srv && srv.authStatus==="needs_reauth"){ gcal.available=false; gcal.error = gcalErrorText("needs_reauth"); }
+    else if(!srv) gcal.error = gcalErrorText("server_not_connected");
+  }catch(err){
+    gcal.available = false;
+    gcal.error = gcalErrorText(err && err.code, err && err.message);
+  }
+  render();
+}
+async function gcalPush(o){
+  const args = gcalArgs(o);
+  if(o.gcalId){
+    await mcpCap.callTool(GCAL, "update_event", Object.assign({eventId:o.gcalId}, args));
+    return o.gcalId;
+  }
+  const res = await mcpCap.callTool(GCAL, "create_event", args);
+  const p = res && res.payload;
+  return (p && typeof p==="object" && p.id) ? p.id : null;
+}
+async function gcalSync(){
+  if(!mcpCap || !gcal.available || state.demo || gcal.syncing) return;
+  gcal.syncing = true; gcal.error = null; gcal.note = null; render();
+  let added=0, changed=0, dropped=0, failed=0, firstErr=null;
+  for(const o of state.orders.slice()){
+    try{
+      if(o.status==="cancelled"){
+        if(o.gcalId){
+          await mcpCap.callTool(GCAL,"delete_event",{eventId:o.gcalId, notificationLevel:"NONE"});
+          o.gcalId = null; o.gcalSig = null; await put("orders", o); dropped++;
+        }
+        continue;
+      }
+      const sig = orderSig(o);
+      if(o.gcalId && o.gcalSig===sig) continue;
+      const had = !!o.gcalId;
+      const id = await gcalPush(o);
+      if(id) o.gcalId = id;
+      o.gcalSig = sig;
+      await put("orders", o);
+      if(had) changed++; else added++;
+    }catch(err){
+      failed++;
+      if(!firstErr) firstErr = gcalErrorText(err && err.code, err && err.message);
+      if(err && (err.code==="needs_reauth" || err.code==="server_not_connected" || err.code==="not_in_manifest" || err.code==="not_granted")) break;
+    }
+  }
+  gcal.syncing = false;
+  gcal.error = firstErr;
+  if(!firstErr){
+    state.settings.gcalLast = new Date().toISOString();
+    saveSettings();
+    gcal.note = (added+changed+dropped)===0 ? "Усе вже в календарі — нових змін немає."
+      : `Готово: ${added? "додано "+added+", ":""}${changed? "оновлено "+changed+", ":""}${dropped? "прибрано "+dropped+", ":""}`.replace(/, $/,".");
+  }
+  render();
+}
+function gcalPanel(){
+  const last = state.settings.gcalLast ? new Date(state.settings.gcalLast) : null;
+  const lastTxt = last ? `Востаннє синхронізовано ${last.getDate()} ${MONTHS_FULL[last.getMonth()]}, ${String(last.getHours()).padStart(2,"0")}:${String(last.getMinutes()).padStart(2,"0")}` : "Ще не синхронізовано";
+  if(state.demo){
+    return `<div class="panel sync"><span class="msg"><b>Синхронізація вимкнена для прикладу.</b> Приклад у твій календар не потрапить — створи справжнє замовлення, і кнопка зʼявиться.</span></div>`;
+  }
+  if(mode!=="db"){
+    return `<div class="panel sync">
+      <span class="msg"><b>Локальний режим.</b> Прямий запис у Google Календар працює лише у версії всередині Claude. Тут можна вивантажити файл .ics і імпортувати його в будь-який календар.</span>
+      <button class="btn" data-act="ics">Експорт .ics</button></div>`;
+  }
+  if(!gcal.checked){
+    return `<div class="panel sync"><span class="msg">Перевіряю доступ до Google Календаря…</span></div>`;
+  }
+  if(!gcal.available){
+    return `<div class="panel sync"><span class="msg"><b>Google Календар недоступний.</b> ${esc(gcal.error || "Відкрий цю сторінку в Claude, щоб синхронізувати заброньовані дати з календарем на телефоні.")}</span></div>`;
+  }
+  return `<div class="panel sync">
+    <span class="msg"><b>Заброньовані дати в Google Календарі.</b> ${esc(gcal.error || gcal.note || lastTxt)} ${gcal.error? "" : "Далі їх видно у віджеті Google Календаря на телефоні."}</span>
+    <button class="btn ${gcal.error?"":"primary"}" data-act="gcalsync" ${gcal.syncing?"disabled":""}>${gcal.syncing? "Синхронізую…" : (gcal.error? "Спробувати ще раз" : "Синхронізувати")}</button>
+  </div>`;
+}
+/* .ics export — the offline substitute for the Google Calendar connector */
+function icsEsc(s){ return String(s==null?"":s).replace(/([,;\\])/g,"\\$1").replace(/\r?\n/g,"\\n"); }
+function buildIcs(){
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Rider//UA//","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  state.orders.filter(o=>o.date && o.status!=="cancelled").forEach(o=>{
+    L.push("BEGIN:VEVENT",
+      "UID:rider-"+o.id+"@rider.local",
+      "DTSTAMP:"+stamp,
+      "DTSTART;VALUE=DATE:"+o.date.replace(/-/g,""),
+      "DTEND;VALUE=DATE:"+nextDay(o.date).replace(/-/g,""),
+      "SUMMARY:"+icsEsc(gcalSummary(o)),
+      "DESCRIPTION:"+icsEsc(gcalDescription(o)),
+      "TRANSP:"+(o.status==="lead"?"TRANSPARENT":"OPAQUE"),
+      "END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  return L.join("\r\n");
+}
+function exportIcs(){
+  try{
+    const blob = new Blob([buildIcs()], {type:"text/calendar;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "rider.ics";
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }catch(err){ console.warn("ics export failed", err); }
+}
+
+async function saveSettings(){
+  if(mode==="local"){ Local.write(); return; }
+  if(mode!=="db" || !db) return;
+  try{ await db.doc("settings/app").set({rate: Number(state.settings.rate)||0, gcalLast: state.settings.gcalLast||null}); }
+  catch(err){ console.warn("settings save failed", err); }
+}
+
+function rateBlock(flush){
+  const r = Number(state.settings.rate)||0;
+  const style = flush ? `margin:14px 0 0; background:var(--surface-2)` : ``;
+  return `<div class="panel rowflex" style="justify-content:space-between; align-items:center; ${style}">
+    <div style="max-width:520px"><b style="font-size:13.5px">Курс для окупності</b>
+      <div class="hint">${r? "Заробіток в іншій валюті зараховується в окупність за цим курсом. Дохід у графіках лишається розділеним." : "Порожньо — гривня і долар рахуються окремо, тож техніка, куплена за $, не окупається гривневими замовленнями. Впиши курс, щоб зарахувати."}</div></div>
+    <label class="rowflex" style="gap:7px; font-size:13px; white-space:nowrap">1 $ =
+      <input class="i rateInput" type="number" min="0" step="0.5" style="width:96px; text-align:right" value="${r||""}" placeholder="—" aria-label="Курс долара до гривні"> ₴</label>
+  </div>`;
+}
+
+function renderClients(){
+  const el = $("#view-clients");
+  const cs = clientStats();
+  if(!cs.length){
+    el.innerHTML = `<div class="empty"><h3>Замовників поки немає</h3><p>Вони зʼявляться самі, щойно ти створиш замовлення й впишеш, від кого воно.</p><button class="btn primary" data-act="new">Створити замовлення</button></div>`;
+    return;
+  }
+  const totalOrders = cs.reduce((s,c)=>s+c.orders,0);
+  const totalRev = {UAH: cs.reduce((s,c)=>s+c.UAH,0), USD: cs.reduce((s,c)=>s+c.USD,0)};
+  const byRev = cs.slice().sort((a,b)=> (b.UAH+b.USD*40) - (a.UAH+a.USD*40));
+  const top = byRev[0];
+  const topShare = totalOrders? Math.round(top.orders/totalOrders*100) : 0;
+  const stale = cs.filter(c=> c.last && daysBetween(c.last, today()) > 90);
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="k">Замовників</div><div class="v num">${cs.length}</div><div class="d">${totalOrders} ${plural(totalOrders,"замовлення","замовлення","замовлень")} усього</div></div>
+    <div class="tile"><div class="k">Найбільший</div><div class="v" style="font-size:17px">${esc(top.name)}</div><div class="d">${topShare}% усіх замовлень</div></div>
+    <div class="tile"><div class="k">Затихли</div><div class="v num">${stale.length}</div><div class="d">${stale.length? "без замовлень понад 3 міс" : "усі активні за 3 міс"}</div></div>
+  </div>`;
+
+  if(topShare >= 50){
+    html += `<div class="panel" style="border-color:color-mix(in srgb, var(--warn) 45%, transparent)"><div class="rowflex"><span class="pill" style="color:var(--warn);border-color:var(--warn)">Концентрація</span>
+      <span style="font-size:13.5px">На <b>${esc(top.name)}</b> припадає ${topShare}% замовлень. Якщо цей канал зупиниться, зупиниться більша частина роботи.</span></div></div>`;
+  }
+
+  html += `<h2 class="sec">Хто дає роботу</h2><p class="sec-sub">Частка рахується від усіх замовлень; дохід — тільки з виконаних</p>`;
+  html += `<div class="panel flush"><div class="tbl-wrap"><table class="t"><thead><tr>
+    <th>Замовник</th><th style="width:190px">Частка замовлень</th><th class="n">Замовлень</th><th class="n">Дохід ₴</th><th class="n">Дохід $</th><th class="n">Останнє</th></tr></thead><tbody>`;
+  html += byRev.map((c,i)=>{
+    const share = totalOrders? c.orders/totalOrders*100 : 0;
+    const col = ["var(--s1)","var(--s2)","var(--s3)","var(--s4)","var(--s5)"][Math.min(i,4)];
+    const dsl = c.last? daysBetween(c.last, today()) : null;
+    return `<tr><td><b>${esc(c.name)}</b></td>
+      <td><div class="share"><div class="track"><i style="width:${share.toFixed(1)}%; background:${col}"></i></div><span class="mono num" style="font-size:12px">${share.toFixed(0)}%</span></div></td>
+      <td class="n">${c.orders}</td>
+      <td class="n">${c.UAH? nf.format(c.UAH) : "—"}</td>
+      <td class="n">${c.USD? nf.format(c.USD) : "—"}</td>
+      <td class="n" style="color:${dsl>90?"var(--warn)":"var(--ink-2)"}">${dsl==null?"—": dsl+" дн тому"}</td></tr>`;
+  }).join("");
+  html += `</tbody></table></div></div>`;
+  html += `<p class="hint">Разом: ${money(totalRev.UAH,"UAH")} · ${money(totalRev.USD,"USD")}</p>`;
+  el.innerHTML = html;
+}
+
+function renderStats(){
+  const el = $("#view-stats");
+  const done = state.orders.filter(counted);
+  if(!done.length){
+    el.innerHTML = `<div class="empty"><h3>Аналітика зʼявиться з даними</h3><p>Познач хоча б одне замовлення як «Виконано» — і тут одразу буде сезонність, розподіл по замовниках і окупність.</p></div>`;
+    return;
+  }
+  const m12 = monthlySeries(12);
+  const counts = m12.map(b=>({label:b.label, value:b.count, b}));
+  const rev = m12.map(b=>({label:b.label, value:b[statsCur], b}));
+  const last3 = m12.slice(-3).reduce((s,b)=>s+b.count,0);
+  const prev3 = m12.slice(-6,-3).reduce((s,b)=>s+b.count,0);
+  const delta = prev3? Math.round((last3-prev3)/prev3*100) : null;
+  const curDone = done.filter(o=>o.currency===statsCur);
+  const total = curDone.reduce((s,o)=>s+orderTotal(o),0);
+  const expenses = curDone.reduce((s,o)=>s+(Number(o.expenses)||0),0);
+  const avg = curDone.length? total/curDone.length : 0;
+  const gearPart = curDone.reduce((s,o)=>s+gearRevenue(o),0);
+  const svcPart = total - gearPart;
+
+  let html = `<div class="sec-head"><div><h2 class="sec">Аналітика</h2><p class="sec-sub">Гривня і долар рахуються окремо — без конвертації</p></div>
+    <div class="seg" id="curSeg"><button data-cur="UAH" aria-pressed="${statsCur==="UAH"}">₴ Гривня</button><button data-cur="USD" aria-pressed="${statsCur==="USD"}">$ Долар</button></div></div>`;
+
+  html += `<div class="tiles">
+    <div class="tile"><div class="k">Дохід, ${CUR[statsCur]}</div><div class="v num">${nf.format(total)}</div><div class="d">чистими ${nf.format(total-expenses)} після витрат</div></div>
+    <div class="tile"><div class="k">Середній чек</div><div class="v num">${nf.format(avg)}</div><div class="d">${curDone.length} ${plural(curDone.length,"замовлення","замовлення","замовлень")} у ${CUR[statsCur]}</div></div>
+    <div class="tile"><div class="k">З оренди техніки</div><div class="v num">${total? Math.round(gearPart/total*100):0}<small>%</small></div><div class="d">${nf.format(gearPart)} ${CUR[statsCur]} з ${nf.format(total)}</div></div>
+    <div class="tile"><div class="k">З власної роботи</div><div class="v num">${total? Math.round(svcPart/total*100):0}<small>%</small></div><div class="d">${nf.format(svcPart)} ${CUR[statsCur]} — виступи, монтаж</div></div>
+  </div>`;
+
+  html += `<div class="panel"><div class="chart-head"><h3>Замовлень по місяцях</h3>
+    <span class="chart-note">${delta==null? "Мало даних для порівняння" : `Останні 3 міс: <b>${last3}</b> проти <b>${prev3}</b> за попередні три — ${delta>=0? "зростання":"спад"} <b>${Math.abs(delta)}%</b>`}</span></div>
+    <div id="chCount">${barChart(counts, {color:"var(--s1)", aria:"Кількість замовлень по місяцях"})}</div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Замовлення (без скасованих)</span></div></div>`;
+
+  html += `<div class="panel"><div class="chart-head"><h3>Дохід по місяцях, ${CUR[statsCur]}</h3>
+    <span class="chart-note">Тільки виконані замовлення</span></div>
+    <div id="chRev">${barChart(rev, {color:"var(--s2)", aria:"Дохід по місяцях"})}</div>
+    <div class="legend"><span><i style="background:var(--s2)"></i>Дохід у ${CUR[statsCur]}</span></div></div>`;
+
+  // seasonality across all years
+  const byMonth = Array.from({length:12}, (_,i)=>({label:MONTHS[i], value:0, m:i}));
+  state.orders.forEach(o=>{ if(o.status!=="cancelled" && o.date) byMonth[new Date(o.date).getMonth()].value++; });
+  const peak = byMonth.slice().sort((a,b)=>b.value-a.value)[0];
+  const low = byMonth.filter(b=>b.value>0).sort((a,b)=>a.value-b.value)[0];
+  html += `<div class="panel"><div class="chart-head"><h3>Сезонність — усі роки разом</h3>
+    <span class="chart-note">${peak.value? `Пік — <b>${MONTHS_FULL[peak.m]}</b>${low&&low.m!==peak.m? `, найтихіше — <b>${MONTHS_FULL[low.m]}</b>`:""}` : ""}</span></div>
+    <div id="chSeason">${barChart(byMonth, {color:"var(--s3)", height:160, aria:"Сезонність по місяцях"})}</div>
+    <div class="legend"><span><i style="background:var(--s3)"></i>Замовлень за місяць, усі роки</span></div></div>`;
+
+  // payback summary
+  const items = state.gear.map(g=>({g,p:payback(g)})).filter(x=>x.p.price>0).sort((a,b)=>a.p.pct-b.p.pct);
+  if(items.length){
+    html += `<div class="panel"><div class="chart-head"><h3>Окупність обладнання</h3><span class="chart-note">Від найдалі до окупності — до найвигіднішого</span></div>
+      <div class="tbl-wrap"><table class="t"><thead><tr><th>Одиниця</th><th style="width:190px">Окупність</th><th class="n">Куплено</th><th class="n">Зароблено</th><th class="n">Здавалось</th><th class="n">Залишилось</th></tr></thead><tbody>`;
+    html += items.map(({g,p})=>`<tr><td><b>${esc(g.name)}</b><div class="hint">${esc(g.category||"")}</div></td>
+      <td><div class="share"><div class="track"><i style="width:${Math.min(100,p.pct)}%; background:${p.pct>=100?"var(--good)":"var(--accent)"}"></i></div><span class="mono num" style="font-size:12px">${p.pct}%</span></div></td>
+      <td class="n">${money(p.price,p.cur)}</td>
+      <td class="n">${money(p.earnedSame,p.cur)}${p.earnedOther?`<div class="hint mono">+ ${money(p.earnedOther,p.other)}</div>`:""}</td>
+      <td class="n">${p.uses}×</td>
+      <td class="n">${p.pct>=100? "окупилось" : (p.usesLeft!=null? "~"+vyizd(p.usesLeft) : "—")}</td></tr>`).join("");
+    html += `</tbody></table></div>${rateBlock(true)}</div>`;
+  }
+
+  el.innerHTML = html;
+  wireBars($("#chCount"), counts, d=> `${d.label} — <span class="tv">${d.value}</span> ${plural(d.value,"замовлення","замовлення","замовлень")}${d.b.cancelled? `<br>скасовано: ${d.b.cancelled}`:""}`);
+  wireBars($("#chRev"), rev, d=> `${d.label} — <span class="tv">${nf.format(d.value)} ${CUR[statsCur]}</span>`);
+  wireBars($("#chSeason"), byMonth, d=> `${MONTHS_FULL[d.m]} — <span class="tv">${d.value}</span> ${plural(d.value,"замовлення","замовлення","замовлень")}`);
+  $("#curSeg").addEventListener("click", e=>{
+    const b = e.target.closest("[data-cur]"); if(!b) return;
+    statsCur = b.dataset.cur; renderStats();
+  });
+}
+
+/* ============================== order form ============================== */
+let draft = null;
+
+function openOrder(id){
+  const src = id ? state.orders.find(o=>o.id===id) : null;
+  draft = src ? JSON.parse(JSON.stringify(src)) : {
+    id: uid(), date: today(), clientId:"", clientName:"", title:"", kind:"rent+set",
+    currency:"UAH", status:"confirmed", items:[], expenses:0, notes:""
+  };
+  drawOrderSheet(!!src);
+}
+
+function defaultRate(g, cur){
+  const v = cur==="USD" ? g.rateUSD : g.rateUAH;
+  return Number(v)||0;
+}
+
+function drawOrderSheet(isEdit){
+  const scrim = $("#scrim");
+  const gearById = id => state.gear.find(g=>g.id===id);
+  const lines = draft.items.map((it,i)=>{
+    const g = it.type==="gear" ? gearById(it.equipmentId) : null;
+    const def = g ? defaultRate(g, draft.currency) : null;
+    const custom = def!=null && def>0 && Number(it.price)!==def;
+    return `<div class="line" data-i="${i}">
+      <div class="ln">${esc(it.name)}${it.type==="service"? `<em>послуга</em>` : (custom? `<em>індивідуальна ціна · дефолт ${nf.format(def)}</em>` : (def? `<em>дефолтна ціна</em>`:`<em>ціна не задана</em>`))}</div>
+      <input type="number" min="1" step="1" value="${Number(it.qty)||1}" data-f="qty" aria-label="Кількість">
+      <input type="number" min="0" step="1" value="${Number(it.price)||0}" data-f="price" aria-label="Ціна">
+      <div class="amt">${nf.format((Number(it.qty)||0)*(Number(it.price)||0))}</div>
+      <button class="x" data-del="${i}" aria-label="Прибрати позицію">✕</button>
+    </div>`;
+  }).join("");
+
+  const chips = state.gear.filter(g=>g.status!=="sold").map(g=>{
+    const on = draft.items.some(it=>it.equipmentId===g.id);
+    return `<button class="chip" data-add="${esc(g.id)}" data-on="${on?1:0}">${esc(g.name)}<span class="mono" style="font-size:11px;opacity:.7">${nf.format(defaultRate(g,draft.currency))}</span></button>`;
+  }).join("");
+
+  const total = orderTotal(draft);
+  const clientList = state.clients.map(c=>`<option value="${esc(c.name)}"></option>`).join("");
+
+  scrim.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Замовлення">
+    <header><h3>${isEdit? "Замовлення" : "Нове замовлення"}</h3>
+      <div class="rowflex">${isEdit? `<button class="btn danger sm" data-act="delorder">Видалити</button>`:""}<button class="btn ghost sm" data-close>Закрити</button></div></header>
+    <div class="body">
+      <div class="fgrid">
+        <label class="f"><span>Дата</span><input class="i" type="date" data-o="date" value="${esc(draft.date)}"></label>
+        <label class="f"><span>Замовник</span><input class="i" list="clientNames" data-o="clientName" value="${esc(draft.clientName)}" placeholder="Клуб, агенція, ім'я"><datalist id="clientNames">${clientList}</datalist></label>
+        <label class="f"><span>Статус</span><select class="i" data-o="status">
+          ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}"${draft.status===k?" selected":""}>${v}</option>`).join("")}
+        </select></label>
+      </div>
+      <label class="f"><span>Що робимо</span><input class="i" data-o="title" value="${esc(draft.title)}" placeholder="Напр. вечірка в Atlas, весілля, відкриття шоуруму"></label>
+      <div class="fgrid">
+        <label class="f"><span>Тип</span><select class="i" data-o="kind">
+          <option value="rent"${draft.kind==="rent"?" selected":""}>Тільки оренда</option>
+          <option value="rent+set"${draft.kind==="rent+set"?" selected":""}>Оренда + робота</option>
+          <option value="set"${draft.kind==="set"?" selected":""}>Тільки виступ</option>
+          <option value="other"${draft.kind==="other"?" selected":""}>Інше</option>
+        </select></label>
+        <label class="f"><span>Валюта</span><select class="i" data-o="currency">
+          <option value="UAH"${draft.currency==="UAH"?" selected":""}>₴ Гривня</option>
+          <option value="USD"${draft.currency==="USD"?" selected":""}>$ Долар</option>
+        </select></label>
+        <label class="f"><span>Витрати (дорога, помічник)</span><input class="i" type="number" min="0" step="1" data-o="expenses" value="${Number(draft.expenses)||0}"></label>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:7px">Обладнання</div>
+        <div class="chips">${chips || `<span class="hint">Карток ще немає — додай їх у вкладці «Обладнання».</span>`}</div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:7px">Моя робота</div>
+        <div class="chips">
+          <button class="chip svc" data-svc="Виступ">＋ Виступ</button>
+          <button class="chip svc" data-svc="Доставка і монтаж">＋ Доставка / монтаж</button>
+          <button class="chip svc" data-svc="Інша послуга">＋ Інша послуга</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:7px">Позиції замовлення</div>
+        <div class="lines">${lines || `<div class="empty-lines">Обери обладнання вище — позиції зʼявляться тут з дефолтною ціною, яку можна змінити.</div>`}
+          <div class="totrow"><span class="hint">Разом${Number(draft.expenses)? ` · чистими ${nf.format(total-(Number(draft.expenses)||0))} ${CUR[draft.currency]}`:""}</span><span class="tv num">${nf.format(total)} ${CUR[draft.currency]}</span></div>
+        </div>
+      </div>
+      <label class="f"><span>Нотатки</span><textarea class="i" data-o="notes" placeholder="Час, адреса, з ким домовлявся">${esc(draft.notes)}</textarea></label>
+    </div>
+    <footer><span class="hint">Окупність рахується лише зі статусу «Виконано»</span>
+      <div class="rowflex"><button class="btn ghost" data-close>Скасувати</button><button class="btn primary" data-act="saveorder">Зберегти</button></div></footer>
+  </div>`;
+  scrim.hidden = false;
+}
+
+function orderSheetEvents(scrim){
+  scrim.addEventListener("input", e=>{
+    const t = e.target;
+    if(!draft) return;
+    if(t.dataset.o){
+      const k = t.dataset.o;
+      draft[k] = (k==="expenses") ? (Number(t.value)||0) : t.value;
+      if(k==="currency"){ repriceDraft(); drawOrderSheet(state.orders.some(o=>o.id===draft.id)); }
+      if(k==="expenses"){ refreshTotals(scrim); }
+      return;
+    }
+    const line = t.closest(".line");
+    if(line){
+      const i = +line.dataset.i, f = t.dataset.f;
+      draft.items[i][f] = Number(t.value)||0;
+      line.querySelector(".amt").textContent = nf.format((Number(draft.items[i].qty)||0)*(Number(draft.items[i].price)||0));
+      refreshTotals(scrim);
+    }
+  });
+  scrim.addEventListener("click", e=>{
+    const add = e.target.closest("[data-add]");
+    const del = e.target.closest("[data-del]");
+    const svc = e.target.closest("[data-svc]");
+    const act = e.target.closest("[data-act]");
+    if(e.target.closest("[data-close]") || e.target===scrim){ closeSheet(); return; }
+    if(add && draft){
+      const g = state.gear.find(x=>x.id===add.dataset.add); if(!g) return;
+      const at = draft.items.findIndex(it=>it.equipmentId===g.id);
+      if(at>=0) draft.items.splice(at,1);
+      else draft.items.push({type:"gear", equipmentId:g.id, name:g.name, qty:1, price:defaultRate(g, draft.currency)});
+      drawOrderSheet(state.orders.some(o=>o.id===draft.id));
+      return;
+    }
+    if(svc && draft){
+      draft.items.push({type:"service", name:svc.dataset.svc, qty:1, price:0});
+      drawOrderSheet(state.orders.some(o=>o.id===draft.id));
+      return;
+    }
+    if(del && draft){
+      draft.items.splice(+del.dataset.del,1);
+      drawOrderSheet(state.orders.some(o=>o.id===draft.id));
+      return;
+    }
+    if(act){
+      const a = act.dataset.act;
+      if(a==="saveorder") saveOrder();
+      if(a==="delorder") deleteOrder();
+      if(a==="savegear") saveGear();
+      if(a==="delgear") deleteGear();
+    }
+  });
+}
+function repriceDraft(){
+  draft.items.forEach(it=>{
+    if(it.type!=="gear") return;
+    const g = state.gear.find(x=>x.id===it.equipmentId);
+    if(g) it.price = defaultRate(g, draft.currency);
+  });
+}
+function refreshTotals(scrim){
+  const tot = orderTotal(draft);
+  const row = $(".totrow", scrim);
+  if(!row) return;
+  row.querySelector(".tv").textContent = nf.format(tot)+" "+CUR[draft.currency];
+  row.querySelector(".hint").textContent = "Разом" + (Number(draft.expenses)? ` · чистими ${nf.format(tot-(Number(draft.expenses)||0))} ${CUR[draft.currency]}` : "");
+}
+
+async function saveOrder(){
+  if(!draft) return;
+  const name = (draft.clientName||"").trim();
+  if(name){
+    let c = state.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(!c){ c = {id:uid(), name, type:"direct"}; await put("clients", c); }
+    draft.clientId = c.id; draft.clientName = c.name;
+  } else { draft.clientId = ""; }
+  if(!draft.title) draft.title = name || "Замовлення";
+  const saved = draft;
+  await put("orders", saved);
+  closeSheet(); render();
+  if(mcpCap && gcal.available && !state.demo && saved.date){
+    try{
+      const sig = orderSig(saved);
+      if(saved.status==="cancelled"){
+        if(saved.gcalId){
+          await mcpCap.callTool(GCAL,"delete_event",{eventId:saved.gcalId, notificationLevel:"NONE"});
+          saved.gcalId = null; saved.gcalSig = null; await put("orders", saved);
+        }
+      } else if(saved.gcalSig !== sig){
+        const id = await gcalPush(saved);
+        if(id) saved.gcalId = id;
+        saved.gcalSig = sig;
+        await put("orders", saved);
+        state.settings.gcalLast = new Date().toISOString(); saveSettings();
+      }
+      gcal.error = null;
+    }catch(err){
+      gcal.error = gcalErrorText(err && err.code, err && err.message);
+    }
+    render();
+  }
+}
+async function deleteOrder(){
+  if(!draft) return;
+  const gid = draft.gcalId;
+  await del("orders", draft.id);
+  closeSheet(); render();
+  if(gid && mcpCap && gcal.available && !state.demo){
+    try{ await mcpCap.callTool(GCAL,"delete_event",{eventId:gid, notificationLevel:"NONE"}); }
+    catch(err){ gcal.error = gcalErrorText(err && err.code, err && err.message); render(); }
+  }
+}
+
+/* ============================== gear form ============================== */
+function openGear(id){
+  const src = id ? state.gear.find(g=>g.id===id) : null;
+  draft = src ? JSON.parse(JSON.stringify(src)) : {
+    id:uid(), name:"", category:"", qty:1, purchaseDate:today(),
+    purchasePrice:0, purchaseCurrency:"UAH", rateUAH:0, rateUSD:0, status:"active", notes:""
+  };
+  const p = src ? payback(src) : null;
+  const scrim = $("#scrim");
+  scrim.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Обладнання">
+    <header><h3>${src? "Картка обладнання" : "Нова картка"}</h3>
+      <div class="rowflex">${src? `<button class="btn danger sm" data-act="delgear">Видалити</button>`:""}<button class="btn ghost sm" data-close>Закрити</button></div></header>
+    <div class="body">
+      <label class="f"><span>Назва</span><input class="i" data-o="name" value="${esc(draft.name)}" placeholder="Напр. Колонки RCF ART 912-A"></label>
+      <div class="fgrid">
+        <label class="f"><span>Категорія</span><input class="i" data-o="category" list="catList" value="${esc(draft.category)}" placeholder="Звук, Світло, DJ-пульт">
+          <datalist id="catList">${["Звук","Світло","DJ-пульт","Ефекти","Кабелі","Стійки","Транспорт"].map(c=>`<option value="${c}"></option>`).join("")}</datalist></label>
+        <label class="f"><span>Скільки одиниць</span><input class="i" type="number" min="1" step="1" data-o="qty" value="${Number(draft.qty)||1}"></label>
+        <label class="f"><span>Дата покупки</span><input class="i" type="date" data-o="purchaseDate" value="${esc(draft.purchaseDate)}"></label>
+      </div>
+      <div class="fgrid">
+        <label class="f"><span>Ціна покупки</span><input class="i" type="number" min="0" step="1" data-o="purchasePrice" value="${Number(draft.purchasePrice)||0}"></label>
+        <label class="f"><span>Валюта покупки</span><select class="i" data-o="purchaseCurrency">
+          <option value="UAH"${draft.purchaseCurrency==="UAH"?" selected":""}>₴ Гривня</option>
+          <option value="USD"${draft.purchaseCurrency==="USD"?" selected":""}>$ Долар</option></select></label>
+        <label class="f"><span>Стан</span><select class="i" data-o="status">
+          <option value="active"${draft.status==="active"?" selected":""}>В строю</option>
+          <option value="repair"${draft.status==="repair"?" selected":""}>На ремонті</option>
+          <option value="sold"${draft.status==="sold"?" selected":""}>Продане</option></select></label>
+      </div>
+      <div class="fgrid">
+        <label class="f"><span>Дефолтна ціна оренди, ₴</span><input class="i" type="number" min="0" step="1" data-o="rateUAH" value="${Number(draft.rateUAH)||0}"></label>
+        <label class="f"><span>Дефолтна ціна оренди, $</span><input class="i" type="number" min="0" step="1" data-o="rateUSD" value="${Number(draft.rateUSD)||0}"></label>
+      </div>
+      <p class="hint">Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.</p>
+      ${p? `<div class="panel" style="margin:0"><div class="paid"><span class="pct ${p.pct>=100?"ok":""}">${p.pct}%</span><span class="hint">${p.pct>=100? "окупилось" : `залишилось ${money(p.left,p.cur)}`}</span></div>
+        <div class="bar" style="margin-top:8px"><i class="${p.pct>=100?"full":""}" style="width:${Math.min(100,p.pct)}%"></i></div>
+        <div class="grow" style="margin-top:10px; display:flex; justify-content:space-between; font-size:13px; color:var(--ink-2)"><span>Здавалось ${p.uses}× · ${p.units} од.</span><span>${p.last? "востаннє "+fmtDate(p.last):""}</span></div></div>`:""}
+      <label class="f"><span>Нотатки</span><textarea class="i" data-o="notes" placeholder="Серійник, комплектація, що зношується">${esc(draft.notes)}</textarea></label>
+    </div>
+    <footer><span class="hint">${src? "Зміни цін не перераховують минулі замовлення" : "Картку можна буде відредагувати будь-коли"}</span>
+      <div class="rowflex"><button class="btn ghost" data-close>Скасувати</button><button class="btn primary" data-act="savegear">Зберегти</button></div></footer>
+  </div>`;
+  scrim.hidden = false;
+}
+async function saveGear(){
+  if(!draft) return;
+  if(!draft.name.trim()){ const el=$("[data-o='name']"); if(el){el.focus(); el.style.borderColor="var(--crit)";} return; }
+  await put("gear", draft);
+  closeSheet(); render();
+}
+async function deleteGear(){
+  if(!draft) return;
+  await del("gear", draft.id);
+  closeSheet(); render();
+}
+function closeSheet(){ draft=null; $("#scrim").hidden = true; $("#scrim").innerHTML=""; }
+
+/* ============================== storage ==============================
+   Two backends behind one interface:
+   - "db"     — the Claude artifact store (works when the page runs inside Claude)
+   - "local"  — localStorage (works when the file is opened from disk / any host)
+   - "memory" — neither is available; the page still renders, nothing persists
+   ===================================================================== */
+const LS_KEY = "rider.v1";
+let mode = "memory";
+const Local = {
+  read(){
+    try{ const raw = localStorage.getItem(LS_KEY); return raw? JSON.parse(raw) : null; }
+    catch(_){ return null; }
+  },
+  write(){
+    try{
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        orders:state.orders, gear:state.gear, clients:state.clients, settings:state.settings
+      }));
+      return true;
+    }catch(err){ console.warn("localStorage write failed", err); return false; }
+  },
+  available(){
+    try{ const k="rider.probe"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return true; }
+    catch(_){ return false; }
+  }
+};
+
+async function put(coll, obj){
+  if(state.demo){ // first real write clears the example
+    state = {orders:[], gear:[], clients:[], settings:state.settings, demo:false, ready:true};
+  }
+  const arr = state[coll];
+  const i = arr.findIndex(x=>x.id===obj.id);
+  if(i>=0) arr[i] = obj; else arr.push(obj);
+  if(mode==="local"){ Local.write(); return; }
+  if(mode!=="db" || !db) return;
+  const {id, ...body} = obj;
+  try{ await db.collection(coll).doc(id).set(body); }
+  catch(err){ console.warn("db write failed", err); }
+}
+async function del(coll, id){
+  state[coll] = state[coll].filter(x=>x.id!==id);
+  if(mode==="local"){ Local.write(); return; }
+  if(mode!=="db" || !db) return;
+  try{ await db.collection(coll).doc(id).delete(); }
+  catch(err){ console.warn("db delete failed", err); }
+}
+
+function subscribe(coll){
+  db.collection(coll).onSnapshot(snap=>{
+    if(state.demo && snap.size===0) return;
+    const rows = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    if(state.demo && rows.length){ state.demo=false; state.orders=[]; state.gear=[]; state.clients=[]; }
+    state[coll] = rows;
+    render();
+  }, err=>{ console.warn("snapshot error", coll, err); });
+}
+
+function demoState(ready){
+  const d = demoData();
+  return {orders:d.orders, gear:d.gear, clients:d.clients, settings:state.settings||{rate:0}, demo:true, ready:!!ready};
+}
+async function boot(){
+  render();
+  let cap = null;
+  try{ cap = await window.claude?.use?.("db"); }catch(_){ cap = null; }
+  db = cap;
+  if(!db){
+    // no artifact store — fall back to this browser's localStorage
+    if(Local.available()){
+      mode = "local";
+      const saved = Local.read();
+      const has = saved && ((saved.orders||[]).length || (saved.gear||[]).length);
+      state = has
+        ? {orders:saved.orders||[], gear:saved.gear||[], clients:saved.clients||[],
+           settings:Object.assign({rate:0}, saved.settings||{}), demo:false, ready:true}
+        : demoState(true);
+      $("#offlineBanner").innerHTML = `<strong>Локальний режим.</strong>
+        <span>Дані зберігаються в цьому браузері (localStorage) і не синхронізуються між пристроями. Google Календар доступний лише у версії всередині Claude.</span>`;
+    } else {
+      mode = "memory";
+      state = demoState(true);
+    }
+    $("#offlineBanner").hidden = false;
+    render();
+    return;
+  }
+  mode = "db";
+  try{
+    const [o,g,c,s] = await Promise.all([
+      db.collection("orders").get(), db.collection("gear").get(), db.collection("clients").get(),
+      db.doc("settings/app").get()
+    ]);
+    const settings = s.exists ? Object.assign({rate:0}, s.data()) : {rate:0};
+    const empty = o.size===0 && g.size===0 && c.size===0;
+    if(empty){
+      state = demoState(true); state.settings = settings;
+    } else {
+      state = {
+        orders: o.docs.map(d=>Object.assign({id:d.id}, d.data())),
+        gear: g.docs.map(d=>Object.assign({id:d.id}, d.data())),
+        clients: c.docs.map(d=>Object.assign({id:d.id}, d.data())),
+        settings, demo:false, ready:true
+      };
+    }
+    render();
+    ["orders","gear","clients"].forEach(subscribe);
+    gcalInit();
+  }catch(err){
+    console.warn("db read failed", err);
+    state = demoState(true);
+    render();
+  }
+}
+async function saveRate(v){
+  state.settings.rate = Number(v)||0;
+  await saveSettings();
+}
+
+/* ============================== wiring ============================== */
+document.addEventListener("click", e=>{
+  const tab = e.target.closest(".tab");
+  if(tab){ curView = tab.dataset.view; render(); return; }
+  if(e.target.closest("#btnNew")){ openOrder(null); return; }
+  const cal = e.target.closest("[data-cal]");
+  if(cal){
+    const step = +cal.dataset.cal;
+    const now = new Date();
+    if(step===0) calCursor = {y:now.getFullYear(), m:now.getMonth()};
+    else{ const d = new Date(calCursor.y, calCursor.m+step, 1); calCursor = {y:d.getFullYear(), m:d.getMonth()}; }
+    renderCalendar(); return;
+  }
+  const act = e.target.closest("main [data-act]");
+  if(act){
+    if(act.dataset.act==="new") openOrder(null);
+    if(act.dataset.act==="newgear") openGear(null);
+    if(act.dataset.act==="gcalsync") gcalSync();
+    if(act.dataset.act==="ics") exportIcs();
+    return;
+  }
+  const op = e.target.closest("[data-open]");
+  if(op){ openOrder(op.dataset.open); return; }
+  const nd = e.target.closest("[data-newday]");
+  if(nd){ openOrder(null); if(draft){ draft.date = nd.dataset.newday; drawOrderSheet(false); } return; }
+  const og = e.target.closest("[data-opengear]");
+  if(og){ openGear(og.dataset.opengear); return; }
+});
+document.addEventListener("change", async e=>{
+  const r = e.target.closest(".rateInput");
+  if(!r) return;
+  await saveRate(r.value);
+  render();
+});
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("#scrim").hidden) closeSheet(); });
+orderSheetEvents($("#scrim"));
+
+// demo state so the page is never an empty shell before db answers
+state = demoState(false);
+boot();
+})();
+</script>
