@@ -50,7 +50,9 @@ export const emptyGear = (): Gear => ({
   notes: "",
 });
 
-export default function AppShell({ snapshot }: { snapshot: Snapshot }) {
+export type StorageInfo = { kind: "json" | "postgres"; path: string | null };
+
+export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; storage: StorageInfo }) {
   const [view, setView] = useState<View>("orders");
   const [orderDraft, setOrderDraft] = useState<Order | null>(null);
   const [gearDraft, setGearDraft] = useState<Gear | null>(null);
@@ -96,6 +98,12 @@ export default function AppShell({ snapshot }: { snapshot: Snapshot }) {
         {view === "gear" && <GearView orders={orders} gear={gear} settings={settings} onOpen={openGear} onNew={() => setGearDraft(emptyGear())} />}
         {view === "clients" && <ClientsView orders={orders} onNew={() => setOrderDraft(emptyOrder())} />}
         {view === "stats" && <StatsView orders={orders} gear={gear} settings={settings} />}
+
+        <p className="hint" style={{ marginTop: 28, textAlign: "center" }}>
+          {storage.kind === "json"
+            ? `Дані у файлі ${storage.path} — це і є те, що варто бекапити`
+            : "Дані в Postgres"}
+        </p>
       </main>
 
       {orderDraft && (

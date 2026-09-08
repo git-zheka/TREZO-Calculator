@@ -1,5 +1,5 @@
 import AppShell from "@/components/AppShell";
-import { loadSnapshot } from "@/lib/db";
+import { dataFilePath, loadSnapshot, storageKind } from "@/lib/db";
 import type { Snapshot } from "@/lib/types";
 
 // Дані персональні й змінюються після кожного запису — кешувати нічого.
@@ -18,15 +18,23 @@ export default async function Page() {
     return (
       <main>
         <div className="banner" style={{ marginTop: 24 }}>
-          <strong>База не відповідає.</strong>
+          <strong>Сховище не відповідає.</strong>
           <span>{error}</span>
         </div>
         <p className="hint">
-          Перевір змінну <code>DATABASE_URL</code> і що схему застосовано: <code>npm run db:push</code>.
+          {storageKind === "json" ? (
+            <>
+              Дані мають лежати у <code>{dataFilePath}</code>. Перевір, що папка доступна на запис.
+            </>
+          ) : (
+            <>
+              Перевір змінну <code>DATABASE_URL</code> і що схему застосовано: <code>npm run db:push</code>.
+            </>
+          )}
         </p>
       </main>
     );
   }
 
-  return <AppShell snapshot={snapshot} />;
+  return <AppShell snapshot={snapshot} storage={{ kind: storageKind, path: dataFilePath }} />;
 }
