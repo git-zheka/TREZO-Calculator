@@ -14,7 +14,7 @@ if (!url) {
   process.exit(1);
 }
 
-const file = process.env.DATA_FILE ?? join(process.cwd(), "data", "rider.json");
+const file = join(process.cwd(), "data", process.env.DATA_FILE_NAME ?? "rider.json");
 
 let data;
 try {

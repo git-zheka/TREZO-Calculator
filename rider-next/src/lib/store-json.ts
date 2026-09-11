@@ -11,7 +11,13 @@ import type { Client, Gear, Order, Snapshot } from "./types";
  * або зникне при наступному холодному старті. Для онлайну — store-pg.ts.
  */
 
-const FILE = process.env.DATA_FILE ?? join(process.cwd(), "data", "rider.json");
+/**
+ * Шлях мусить бути статично прив'язаний до підпапки: інакше збирач не може
+ * довести, куди саме йде читання, і про всяк випадок тягне в серверний бандл
+ * увесь проєкт. На Vercel це роздуває функцію до відмови.
+ * Тому "data" — літерал, змінною задається лише ім'я файлу.
+ */
+const FILE = join(process.cwd(), "data", process.env.DATA_FILE_NAME ?? "rider.json");
 
 const empty = (): Snapshot => ({
   orders: [],

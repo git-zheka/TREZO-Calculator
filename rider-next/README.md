@@ -23,7 +23,7 @@ npm run dev                    # http://localhost:3000
 | `APP_PASSWORD` | Пароль, яким заходиш у застосунок |
 | `AUTH_SECRET` | Випадковий рядок для підпису cookie: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `STORAGE` | `json` або `postgres`. Без неї: є `DATABASE_URL` → postgres, немає → json |
-| `DATA_FILE` | Куди класти JSON. Типово `data/rider.json` |
+| `DATA_FILE_NAME` | Ім'я JSON-файлу всередині `data/`. Типово `rider.json` |
 | `DATABASE_URL` | Connection string із Neon, обовʼязково **pooled**. Тільки для режиму postgres |
 
 ## Два сховища
