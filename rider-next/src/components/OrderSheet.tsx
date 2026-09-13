@@ -137,6 +137,9 @@ export default function OrderSheet({
                   onClick={() => toggleGear(g)}
                 >
                   {g.name}
+                  {(Number(g.qty) || 1) > 1 && (
+                    <span className="mono" style={{ fontSize: 11, opacity: .55 }}>×{g.qty}</span>
+                  )}
                   <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(defaultRate(g, draft.currency))}</span>
                 </button>
               ))}
@@ -155,6 +158,15 @@ export default function OrderSheet({
           <div>
             <div className="eyebrow" style={{ marginBottom: 7 }}>Позиції замовлення</div>
             <div className="lines">
+              {draft.items.length > 0 && (
+                <div className="line lines-head">
+                  <div>Позиція</div>
+                  <div>К-сть</div>
+                  <div>Ціна за 1</div>
+                  <div>Сума</div>
+                  <div />
+                </div>
+              )}
               {draft.items.length === 0 && (
                 <div className="empty-lines">Обери обладнання вище — позиції зʼявляться тут з дефолтною ціною, яку можна змінити.</div>
               )}
@@ -162,12 +174,19 @@ export default function OrderSheet({
                 const g = it.type === "gear" ? gear.find((x) => x.id === it.equipmentId) : undefined;
                 const def = g ? defaultRate(g, draft.currency) : null;
                 const custom = def != null && def > 0 && Number(it.price) !== def;
+                const owned = g ? Number(g.qty) || 1 : null;
+                // Попереджаємо, але не блокуємо: одиницю можна дібрати в колеги.
+                const over = owned != null && Number(it.qty) > owned;
                 return (
-                  <div className="line" key={`${it.equipmentId ?? it.name}-${i}`}>
+                  <div className={`line${over ? " over" : ""}`} key={`${it.equipmentId ?? it.name}-${i}`}>
                     <div className="ln">
                       {it.name}
-                      <em>
-                        {it.type === "service" ? "послуга" : custom ? `індивідуальна ціна · дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}
+                      <em className={over ? "warn" : undefined}>
+                        {it.type === "service"
+                          ? "послуга"
+                          : over
+                            ? `у тебе лише ${owned} шт`
+                            : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
                       </em>
                     </div>
                     <input type="number" min={1} step={1} value={it.qty} aria-label="Кількість" onChange={(e) => patchItem(i, { qty: Number(e.target.value) || 0 })} />

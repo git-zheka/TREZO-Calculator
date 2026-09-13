@@ -44,7 +44,9 @@ gh repo create rider --private --source=. --push    # або створи реп
 1. [vercel.com](https://vercel.com) → Sign up через GitHub.
 2. **Add New → Project** → обери репозиторій `rider`.
 3. Next.js визначиться сам, нічого налаштовувати не треба.
-4. До натискання **Deploy** розкрий **Environment Variables** і додай три:
+4. **Root Directory** → Edit → `rider-next`. Репозиторій на рівень вище проєкту.
+5. Після зміни Root Directory перевір **Framework Preset** — має бути `Next.js`. Детекція фреймворку відбувається до того, як ти вкажеш підпапку, тому в корені без `package.json` вона дає `Other`, і це не виправляється саме.
+6. Розкрий **Environment Variables** і додай три:
 
 | Name | Value |
 |---|---|
@@ -52,7 +54,7 @@ gh repo create rider --private --source=. --push    # або створи реп
 | `APP_PASSWORD` | пароль, яким заходитимеш |
 | `AUTH_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
-5. **Deploy**. За хвилину буде посилання `rider-щось.vercel.app`.
+7. **Deploy**. За хвилину буде посилання.
 
 Перший захід покаже помилку бази — таблиць ще немає. Це наступний крок.
 
@@ -124,6 +126,10 @@ Vercel Hobby забороняє комерційне використання �
 ---
 
 ## Якщо не піднімається
+
+**404 на всіх сторінках, але файли з `public` відкриваються, а лог збірки чистий** — `Framework Preset = Other`. З ним Vercel виконує `npm run build`, а потім віддає лише `public` як статику: жодної функції, жодної маршрутизації Next. Лікується в Settings → Build and Deployment → Framework Preset → `Next.js` → Save → Redeploy без кешу. Найпідступніша з пасток, бо лог виглядає бездоганно.
+
+**Сторінка перекидає на `vercel.com/login`** — увімкнений Deployment Protection. Вимкни в Settings → Deployment Protection для Production, інакше телефон впреться в стіну авторизації, а Google Календар не прочитає ICS-фід.
 
 **«База не відповідає» після деплою** — не застосована схема (`npm run db:push`) або в `DATABASE_URL` не pooled-рядок. Перевір, що в хості є `-pooler`.
 

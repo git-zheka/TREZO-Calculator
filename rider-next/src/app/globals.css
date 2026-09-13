@@ -229,6 +229,10 @@ textarea.i { resize: vertical; min-height: 56px; }
 .amt { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 600; }
 .x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 4px; }
 .x:hover { color: var(--crit); }
+.lines-head { background: var(--surface-2); font-family: var(--font-mono); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; }
+.lines-head > div:nth-child(2), .lines-head > div:nth-child(3), .lines-head > div:nth-child(4) { text-align: right; }
+.line.over { background: color-mix(in srgb, var(--crit) 7%, transparent); }
+.ln em.warn { color: var(--crit); }
 .empty-lines { padding: 14px; text-align: center; color: var(--muted); font-size: 13px; }
 .totrow { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; background: var(--surface-2); border-top: 1px solid var(--line); }
 .totrow .tv { font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -.02em; }
