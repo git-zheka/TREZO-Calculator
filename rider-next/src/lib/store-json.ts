@@ -45,7 +45,9 @@ async function read(): Promise<Snapshot> {
     return {
       orders: parsed.orders ?? [],
       gear: parsed.gear ?? [],
-      clients: parsed.clients ?? [],
+      // Старі файли не знають про regular/contact — добиваємо дефолтами при читанні,
+      // інакше в інтерфейс приїде undefined і чекбокс стане неконтрольованим.
+      clients: (parsed.clients ?? []).map((c) => ({ ...c, regular: c.regular === true, contact: c.contact ?? "" })),
       settings: {
         rate: Number(parsed.settings?.rate) || 0,
         icsToken: parsed.settings?.icsToken || randomBytes(18).toString("hex"),
@@ -140,14 +142,39 @@ export async function findOrCreateClient(name: string): Promise<Client | null> {
     const created: Client = {
       id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4),
       name: trimmed,
-      type: "direct",
+      type: "",
+      regular: false,
+      contact: "",
       notes: "",
     };
     s.clients.push(created);
-    s.clients.sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    sortClients(s.clients);
     result = created;
   });
   return result;
+}
+
+/** Постійні вгорі, решта за абеткою — той самий порядок, що й у Postgres. */
+const sortClients = (list: Client[]) =>
+  list.sort((a, b) => Number(b.regular) - Number(a.regular) || a.name.localeCompare(b.name, "uk"));
+
+export async function upsertClient(c: Client) {
+  await mutate((s) => {
+    const i = s.clients.findIndex((x) => x.id === c.id);
+    if (i >= 0) s.clients[i] = c;
+    else s.clients.push(c);
+    sortClients(s.clients);
+    // Ім'я в замовленнях — копія, тож перейменування треба рознести окремо.
+    s.orders = s.orders.map((o) => (o.clientId === c.id ? { ...o, clientName: c.name } : o));
+  });
+}
+
+/** Замовлення лишаються: посилання обнуляється, вписане ім'я в них уже є. */
+export async function deleteClient(id: string) {
+  await mutate((s) => {
+    s.clients = s.clients.filter((c) => c.id !== id);
+    s.orders = s.orders.map((o) => (o.clientId === id ? { ...o, clientId: null } : o));
+  });
 }
 
 export async function saveRate(rate: number) {

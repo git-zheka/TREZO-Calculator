@@ -93,9 +93,10 @@ export default function CalendarView({
                   key={o.id}
                   className={`ev s-${o.status}`}
                   onClick={() => onOpen(o.id)}
-                  title={`${o.title} · ${o.clientName} · ${money(orderTotal(o), o.currency)}`}
+                  title={[o.title, o.clientName, money(orderTotal(o), o.currency)].filter(Boolean).join(" · ")}
                 >
-                  {o.title || "Замовлення"}
+                  <span className="et">{o.title || "Замовлення"}</span>
+                  {o.clientName && <span className="ec">{o.clientName}</span>}
                 </button>
               ))}
               {list.length > 3 && <span className="more">ще {list.length - 3}</span>}

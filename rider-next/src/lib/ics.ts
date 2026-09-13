@@ -22,9 +22,14 @@ function fold(line: string) {
   return out.join("\r\n");
 }
 
+/** У рядку календаря має бути видно і подію, і замовника — саме за цим
+ *  розрізняєш дві роботи в один день, не відкриваючи картку. */
 export function summaryOf(o: Order) {
   const mark = o.status === "lead" ? "? " : "";
-  return mark + (o.title || "Замовлення") + (o.clientName ? ` · ${o.clientName}` : "");
+  const what = o.title.trim();
+  const who = o.clientName.trim();
+  if (what && who) return `${mark}${what} · ${who}`;
+  return mark + (what || who || "Замовлення");
 }
 
 export function descriptionOf(o: Order) {
@@ -35,7 +40,11 @@ export function descriptionOf(o: Order) {
     return `• ${i.name} × ${i.qty}${extra}`;
   });
   const svc = (o.items || []).filter((i) => i.type === "service").map((i) => `• ${i.name}`);
-  const parts = [`Статус: ${STATUS_LABEL[o.status]}`, `Сума: ${money(orderTotal(o), o.currency)}`];
+  const parts = [
+    o.clientName.trim() ? `Замовник: ${o.clientName.trim()}` : "Замовник не вказаний",
+    `Статус: ${STATUS_LABEL[o.status]}`,
+    `Сума: ${money(orderTotal(o), o.currency)}`,
+  ];
   if (gear.length) parts.push(`Обладнання:\n${gear.join("\n")}`);
   if (svc.length) parts.push(`Робота:\n${svc.join("\n")}`);
   if (o.notes) parts.push(`Нотатки: ${o.notes}`);

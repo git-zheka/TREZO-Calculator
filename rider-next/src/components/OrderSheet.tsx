@@ -38,6 +38,17 @@ export default function OrderSheet({
 
   const set = <K extends keyof Order>(k: K, v: Order[K]) => onChange({ ...draft, [k]: v });
 
+  /** Постійні першими, решта за абеткою. Список короткий — тож чіпи, а не datalist:
+   *  datalist на мобільних браузерах або не відкривається, або ховається за клавіатурою. */
+  const pickable = [...clients].sort(
+    (a, b) => Number(b.regular) - Number(a.regular) || a.name.localeCompare(b.name, "uk"),
+  );
+
+  /** Набране руками ім'я, що збігається із заведеним, чіпляється до тієї ж картки —
+   *  інакше в аналітиці зʼявився б другий рядок із тим самим замовником. */
+  const pickId = (name: string) =>
+    clients.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase())?.id ?? null;
+
   const setCurrency = (cur: Currency) => {
     // Зміна валюти переставляє дефолтні ставки — індивідуальні ціни довелося б
     // переводити за курсом, а курс тут не наше діло.
@@ -120,8 +131,12 @@ export default function OrderSheet({
             </label>
             <label className="f">
               <span>Замовник</span>
-              <input className="i" list="clientNames" value={draft.clientName} placeholder="Клуб, агенція, ім'я" onChange={(e) => set("clientName", e.target.value)} />
-              <datalist id="clientNames">{clients.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+              <input
+                className="i"
+                value={draft.clientName}
+                placeholder="Клуб, агенція, ім'я"
+                onChange={(e) => onChange({ ...draft, clientName: e.target.value, clientId: pickId(e.target.value) })}
+              />
             </label>
             <label className="f">
               <span>Статус</span>
@@ -130,6 +145,27 @@ export default function OrderSheet({
               </select>
             </label>
           </div>
+
+          {pickable.length > 0 && (
+            <div className="chips">
+              {pickable.map((c) => {
+                const on = draft.clientName.trim().toLowerCase() === c.name.trim().toLowerCase();
+                return (
+                  <button
+                    key={c.id}
+                    className="chip"
+                    data-on={on ? "1" : "0"}
+                    onClick={() => onChange(on
+                      ? { ...draft, clientName: "", clientId: null }
+                      : { ...draft, clientName: c.name, clientId: c.id })}
+                  >
+                    {c.regular && <span className="mono" style={{ fontSize: 11, opacity: .7 }}>★</span>}
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <label className="f">
             <span>Що робимо</span>

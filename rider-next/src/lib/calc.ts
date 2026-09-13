@@ -1,4 +1,4 @@
-import type { Currency, Gear, Order, Settings } from "./types";
+import type { Client, Currency, Gear, Order, Settings } from "./types";
 import { MONTHS, daysBetween, today } from "./format";
 
 /* ---------- суми ---------- */
@@ -89,6 +89,8 @@ export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
 export type ClientStat = {
   key: string;
   name: string;
+  /** Заведена картка замовника, якщо вона є; для рядків, що виникли лише із замовлень, — null */
+  client: Client | null;
   orders: number;
   done: number;
   UAH: number;
@@ -97,13 +99,28 @@ export type ClientStat = {
   idleDays: number | null;
 };
 
-export function clientStats(orders: Order[]): ClientStat[] {
+/**
+ * Зводить замовлення по замовниках. Заведені картки потрапляють у список навіть
+ * без жодного замовлення — інакше щойно створений постійний клієнт зникав би
+ * до першої роботи. Замовлення чіпляється до картки за id, а якщо його немає
+ * (старі записи) — за іменем без урахування регістру.
+ */
+export function clientStats(orders: Order[], clients: Client[] = []): ClientStat[] {
   const map = new Map<string, ClientStat>();
+  const byName = new Map<string, string>();
+
+  const blank = (key: string, name: string, client: Client | null): ClientStat =>
+    ({ key, name, client, orders: 0, done: 0, UAH: 0, USD: 0, last: null, idleDays: null });
+
+  for (const c of clients) {
+    map.set(c.id, blank(c.id, c.name, c));
+    byName.set(c.name.trim().toLowerCase(), c.id);
+  }
+
   for (const o of orders) {
-    const key = o.clientId || `n:${o.clientName || "—"}`;
-    if (!map.has(key)) {
-      map.set(key, { key, name: o.clientName || "Без замовника", orders: 0, done: 0, UAH: 0, USD: 0, last: null, idleDays: null });
-    }
+    const named = byName.get((o.clientName || "").trim().toLowerCase());
+    const key = (o.clientId && map.has(o.clientId) ? o.clientId : null) ?? named ?? o.clientId ?? `n:${o.clientName || "—"}`;
+    if (!map.has(key)) map.set(key, blank(key, o.clientName || "Без замовника", null));
     const m = map.get(key)!;
     m.orders += 1;
     if (counted(o)) {

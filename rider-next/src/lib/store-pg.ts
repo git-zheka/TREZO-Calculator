@@ -57,10 +57,14 @@ const asGear = (r: Row): Gear => ({
   sort: Number(r.sort) || 0,
 });
 
+const CLIENT_COLS = `id, name, type, regular, contact, notes`;
+
 const asClient = (r: Row): Client => ({
   id: String(r.id),
   name: (r.name as string) ?? "",
-  type: (r.type as string) ?? "direct",
+  type: (r.type as string) ?? "",
+  regular: r.regular === true,
+  contact: (r.contact as string) ?? "",
   notes: (r.notes as string) ?? "",
 });
 
@@ -69,7 +73,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const [orders, gear, clients, settings] = await Promise.all([
     db.query(`select ${ORDER_COLS} from orders order by date desc`),
     db.query(`select ${GEAR_COLS} from gear order by sort, name`),
-    db`select id, name, type, notes from clients order by name`,
+    db.query(`select ${CLIENT_COLS} from clients order by regular desc, name`),
     db`select * from settings where id = 1`,
   ]);
   const s = (settings as Row[])[0];
@@ -145,13 +149,37 @@ export async function findOrCreateClient(name: string): Promise<Client | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
   const db = sql();
-  const found = (await db`select id, name, type, notes from clients where lower(name) = lower(${trimmed}) limit 1`) as Row[];
+  const found = (await db.query(
+    `select ${CLIENT_COLS} from clients where lower(name) = lower($1) limit 1`,
+    [trimmed],
+  )) as Row[];
   if (found[0]) return asClient(found[0]);
   const id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-  const created = (await db`
-    insert into clients (id, name) values (${id}, ${trimmed})
-    returning id, name, type, notes`) as Row[];
+  const created = (await db.query(
+    `insert into clients (id, name) values ($1, $2) returning ${CLIENT_COLS}`,
+    [id, trimmed],
+  )) as Row[];
   return asClient(created[0]);
+}
+
+export async function upsertClient(c: Client) {
+  const db = sql();
+  await db`
+    insert into clients (id, name, type, regular, contact, notes)
+    values (${c.id}, ${c.name}, ${c.type}, ${c.regular}, ${c.contact}, ${c.notes})
+    on conflict (id) do update set
+      name = excluded.name, type = excluded.type, regular = excluded.regular,
+      contact = excluded.contact, notes = excluded.notes`;
+  // Ім'я показується в замовленнях копією — щоб історія лишалась читабельною,
+  // навіть якщо картку замовника згодом видалять. Тому перейменування треба рознести.
+  await db`update orders set client_name = ${c.name} where client_id = ${c.id}`;
+}
+
+/** Картку прибираємо, замовлення лишаються: client_id обнулиться (on delete set null),
+ *  а вписане ім'я в них уже є, тож статистика не втратить жодного рядка. */
+export async function deleteClient(id: string) {
+  const db = sql();
+  await db`delete from clients where id = ${id}`;
 }
 
 export async function saveRate(rate: number) {

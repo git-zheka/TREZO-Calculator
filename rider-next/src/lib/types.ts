@@ -133,7 +133,29 @@ export type Client = {
   id: string;
   name: string;
   type: string;
+  /** Постійний — виноситься нагору в списках і підставляється першим у замовленні */
+  regular: boolean;
+  /** Телефон, телеграм, пошта — щоб не шукати по переписках */
+  contact: string;
   notes: string;
+};
+
+/** Типи замовників. Порядок задає порядок у випадному списку. */
+export const CLIENT_TYPES = [
+  "Агенція",
+  "Клуб / заклад",
+  "Ресторан",
+  "Компанія",
+  "Приватна особа",
+  "Інше",
+] as const;
+
+export const normalizeClientType = (t: string): string => {
+  const raw = (t ?? "").trim();
+  if (!raw) return "Інше";
+  const exact = (CLIENT_TYPES as readonly string[]).find((x) => x.toLowerCase() === raw.toLowerCase());
+  // "direct" — дефолт зі старої схеми, коли типи ще не вибирались зі списку
+  return exact ?? "Інше";
 };
 
 export type Settings = {

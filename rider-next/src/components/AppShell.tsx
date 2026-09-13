@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Gear, Order, Snapshot } from "@/lib/types";
+import type { Client, Gear, Order, Snapshot } from "@/lib/types";
 import { today, uid } from "@/lib/format";
-import { removeGear, removeOrder, saveGear, saveOrder } from "@/app/actions";
+import { removeClient, removeGear, removeOrder, saveClient, saveGear, saveOrder } from "@/app/actions";
 import OrdersView from "./OrdersView";
 import CalendarView from "./CalendarView";
 import GearView from "./GearView";
@@ -11,6 +11,7 @@ import ClientsView from "./ClientsView";
 import StatsView from "./StatsView";
 import OrderSheet from "./OrderSheet";
 import GearSheet from "./GearSheet";
+import ClientSheet from "./ClientSheet";
 
 export type View = "orders" | "calendar" | "gear" | "clients" | "stats";
 
@@ -53,12 +54,22 @@ export const emptyGear = (): Gear => ({
   sort: 0,
 });
 
+export const emptyClient = (): Client => ({
+  id: uid(),
+  name: "",
+  type: "Інше",
+  regular: true,
+  contact: "",
+  notes: "",
+});
+
 export type StorageInfo = { kind: "json" | "postgres"; path: string | null };
 
 export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; storage: StorageInfo }) {
   const [view, setView] = useState<View>("orders");
   const [orderDraft, setOrderDraft] = useState<Order | null>(null);
   const [gearDraft, setGearDraft] = useState<Gear | null>(null);
+  const [clientDraft, setClientDraft] = useState<Client | null>(null);
   const [pending, start] = useTransition();
 
   const { orders, gear, clients, settings } = snapshot;
@@ -68,8 +79,12 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
   const commitGear = (g: Gear) => start(async () => { await saveGear(g); setGearDraft(null); });
   const dropGear = (id: string) => start(async () => { await removeGear(id); setGearDraft(null); });
 
+  const commitClient = (c: Client) => start(async () => { await saveClient(c); setClientDraft(null); });
+  const dropClient = (id: string) => start(async () => { await removeClient(id); setClientDraft(null); });
+
   const openOrder = (id: string) => setOrderDraft(structuredClone(orders.find((o) => o.id === id) ?? emptyOrder()));
   const openGear = (id: string) => setGearDraft(structuredClone(gear.find((g) => g.id === id) ?? emptyGear()));
+  const openClient = (id: string) => setClientDraft(structuredClone(clients.find((c) => c.id === id) ?? emptyClient()));
 
   return (
     <>
@@ -99,7 +114,15 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
           />
         )}
         {view === "gear" && <GearView orders={orders} gear={gear} settings={settings} onOpen={openGear} onNew={() => setGearDraft(emptyGear())} />}
-        {view === "clients" && <ClientsView orders={orders} onNew={() => setOrderDraft(emptyOrder())} />}
+        {view === "clients" && (
+          <ClientsView
+            orders={orders}
+            clients={clients}
+            onOpen={openClient}
+            onNewClient={() => setClientDraft(emptyClient())}
+            onNewOrder={() => setOrderDraft(emptyOrder())}
+          />
+        )}
         {view === "stats" && <StatsView orders={orders} gear={gear} settings={settings} />}
 
         <p className="hint" style={{ marginTop: 28, textAlign: "center" }}>
@@ -134,6 +157,19 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
           onClose={() => setGearDraft(null)}
           onSave={commitGear}
           onDelete={dropGear}
+        />
+      )}
+      {clientDraft && (
+        <ClientSheet
+          draft={clientDraft}
+          orders={orders}
+          allClients={clients}
+          exists={clients.some((c) => c.id === clientDraft.id)}
+          pending={pending}
+          onChange={setClientDraft}
+          onClose={() => setClientDraft(null)}
+          onSave={commitClient}
+          onDelete={dropClient}
         />
       )}
     </>

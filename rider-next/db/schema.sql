@@ -9,6 +9,10 @@ create table if not exists clients (
   created_at  timestamptz not null default now()
 );
 
+-- Постійні замовники: заводяться руками, а не лише зʼявляються із замовлень
+alter table clients add column if not exists regular boolean not null default false;
+alter table clients add column if not exists contact text not null default '';
+
 create table if not exists gear (
   id                text primary key,
   name              text not null,

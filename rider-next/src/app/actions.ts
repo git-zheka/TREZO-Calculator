@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import * as db from "@/lib/db";
 import { COOKIE, COOKIE_OPTIONS, checkPassword, issueToken } from "@/lib/auth";
-import type { Gear, Order } from "@/lib/types";
+import type { Client, Gear, Order } from "@/lib/types";
 
 /* ---------- авторизація ---------- */
 
@@ -61,6 +61,18 @@ export async function reorderGear(ids: string[]) {
 
 export async function removeGear(id: string) {
   await db.deleteGear(id);
+  revalidatePath("/");
+}
+
+/* ---------- замовники ---------- */
+
+export async function saveClient(client: Client) {
+  await db.upsertClient({ ...client, name: client.name.trim() });
+  revalidatePath("/");
+}
+
+export async function removeClient(id: string) {
+  await db.deleteClient(id);
   revalidatePath("/");
 }
 
