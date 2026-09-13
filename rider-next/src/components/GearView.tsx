@@ -149,7 +149,7 @@ export default function GearView({
 
                     <button className="gear" onClick={() => onOpen(g.id)}>
                       <div>
-                        <div className="gcat">{g.qty > 1 ? `${g.qty} шт` : "1 шт"}</div>
+                        <div className="gcat">{cat} · {g.qty > 1 ? `${g.qty} шт` : "1 шт"}</div>
                         <div className="gname">{g.name}</div>
                       </div>
 
