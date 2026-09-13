@@ -49,6 +49,7 @@ export const emptyGear = (): Gear => ({
   status: "active",
   notes: "",
   parts: [],
+  needs: [],
 });
 
 export type StorageInfo = { kind: "json" | "postgres"; path: string | null };
@@ -123,6 +124,7 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
       {gearDraft && (
         <GearSheet
           draft={gearDraft}
+          allGear={gear}
           orders={orders}
           settings={settings}
           exists={gear.some((g) => g.id === gearDraft.id)}

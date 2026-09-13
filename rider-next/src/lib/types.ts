@@ -11,6 +11,8 @@ export type OrderItem = {
   price: number;
   /** Комплектація на момент замовлення — щоб не забути взяти. Копія, не посилання. */
   parts?: { name: string; qty: number }[];
+  /** Рядок доданий автоматично як комутація до цієї позиції (id картки-власника). */
+  via?: string | null;
 };
 
 export type Order = {
@@ -35,6 +37,13 @@ export type GearPart = {
   price: number;
 };
 
+/** Комутація: посилання на іншу картку, яка зазвичай їде разом.
+ *  Саме посилання, а не копія — кабель має власний запас на складі. */
+export type GearLink = {
+  gearId: string;
+  qty: number;
+};
+
 export type Gear = {
   id: string;
   name: string;
@@ -48,6 +57,7 @@ export type Gear = {
   status: GearStatus;
   notes: string;
   parts: GearPart[];
+  needs: GearLink[];
 };
 
 export type Client = {

@@ -49,15 +49,43 @@ export default function OrderSheet({
     onChange({ ...draft, currency: cur, items });
   };
 
+  const lineFor = (g: Gear, via: string | null, qty = 1) => ({
+    type: "gear" as const,
+    equipmentId: g.id,
+    name: g.name,
+    qty,
+    price: defaultRate(g, draft.currency),
+    // Копія на момент замовлення: якщо комплект колись зміниться, старі замовлення лишаться як були.
+    parts: (g.parts ?? []).filter((x) => x.name.trim()).map((x) => ({ name: x.name, qty: x.qty })),
+    via,
+  });
+
   const toggleGear = (g: Gear) => {
-    const at = draft.items.findIndex((it) => it.equipmentId === g.id);
-    const items = [...draft.items];
-    if (at >= 0) items.splice(at, 1);
-    else items.push({
-      type: "gear", equipmentId: g.id, name: g.name, qty: 1, price: defaultRate(g, draft.currency),
-      // Копія на момент замовлення: якщо комплект колись зміниться, старі замовлення лишаться як були.
-      parts: (g.parts ?? []).filter((x) => x.name.trim()).map((x) => ({ name: x.name, qty: x.qty })),
-    });
+    const has = draft.items.some((it) => it.equipmentId === g.id);
+    if (has) {
+      // Знімаємо позицію разом із її комутацією — але тільки тією,
+      // якої не потребує жодна інша позиція, що лишається в замовленні.
+      const staying = draft.items.filter((it) => it.equipmentId !== g.id && !it.via);
+      const stillNeeded = new Set(
+        staying.flatMap((it) => {
+          const owner = gear.find((x) => x.id === it.equipmentId);
+          return (owner?.needs ?? []).map((n) => n.gearId);
+        }),
+      );
+      onChange({
+        ...draft,
+        items: draft.items.filter(
+          (it) => it.equipmentId !== g.id && (!it.via || it.via !== g.id || stillNeeded.has(it.equipmentId ?? "")),
+        ),
+      });
+      return;
+    }
+    const items = [...draft.items, lineFor(g, null)];
+    for (const n of g.needs ?? []) {
+      if (items.some((it) => it.equipmentId === n.gearId)) continue;
+      const linked = gear.find((x) => x.id === n.gearId);
+      if (linked) items.push(lineFor(linked, g.id, Number(n.qty) || 1));
+    }
     onChange({ ...draft, items });
   };
 
@@ -191,7 +219,9 @@ export default function OrderSheet({
                           ? "послуга"
                           : over
                             ? `у тебе лише ${owned} шт`
-                            : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
+                            : it.via
+                              ? `комутація до «${gear.find((x) => x.id === it.via)?.name ?? "…"}» · ${owned} шт у парку`
+                              : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
                       </em>
                     </div>
                     <NumberField value={it.qty} ariaLabel="Кількість" placeholder="1" onChange={(n) => patchItem(i, { qty: n })} />

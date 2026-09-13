@@ -11,6 +11,7 @@ const CATEGORIES = ["Звук", "Світло", "DJ-пульт", "Ефекти",
 
 export default function GearSheet({
   draft,
+  allGear,
   orders,
   settings,
   exists,
@@ -21,6 +22,7 @@ export default function GearSheet({
   onDelete,
 }: {
   draft: Gear;
+  allGear: Gear[];
   orders: Order[];
   settings: Settings;
   exists: boolean;
@@ -45,6 +47,16 @@ export default function GearSheet({
     set("parts", parts.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
   const dropPart = (i: number) => set("parts", parts.filter((_, idx) => idx !== i));
   const partsCost = parts.reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
+
+  const needs = draft.needs ?? [];
+  const others = allGear.filter((g) => g.id !== draft.id && g.status !== "sold");
+  const toggleNeed = (gearId: string) => {
+    const at = needs.findIndex((n) => n.gearId === gearId);
+    if (at >= 0) set("needs", needs.filter((_, i) => i !== at));
+    else set("needs", [...needs, { gearId, qty: 1 }]);
+  };
+  const setNeedQty = (gearId: string, qty: number) =>
+    set("needs", needs.map((n) => (n.gearId === gearId ? { ...n, qty: qty || 1 } : n)));
   const unitsCost = (Number(draft.purchasePrice) || 0) * (Number(draft.qty) || 1);
 
   return (
@@ -158,6 +170,56 @@ export default function GearSheet({
                 </span>
               </div>
             </div>
+          </div>
+
+          <div>
+            <div className="eyebrow" style={{ marginBottom: 7 }}>Комутація</div>
+            <p className="hint" style={{ margin: "0 0 8px" }}>
+              Інші картки, які зазвичай їдуть разом: кабелі, стійки, перехідники. На відміну від
+              комплектації, у них власний запас — тож коли той самий HDMI поїде з двома телевізорами
+              на одну дату, застосунок це побачить. При створенні замовлення вони підставляться,
+              і будь-яку можна прибрати.
+            </p>
+            {others.length === 0 ? (
+              <p className="hint">Інших карток ще немає — спершу заведи кабелі окремими позиціями.</p>
+            ) : (
+              <>
+                <div className="chips">
+                  {others.map((g) => {
+                    const on = needs.some((n) => n.gearId === g.id);
+                    return (
+                      <button key={g.id} className="chip" data-on={on ? "1" : "0"} onClick={() => toggleNeed(g.id)}>
+                        {g.name}
+                        <span className="mono" style={{ fontSize: 11, opacity: .55 }}>×{g.qty}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {needs.length > 0 && (
+                  <div className="lines" style={{ marginTop: 10 }}>
+                    {needs.map((n) => {
+                      const g = allGear.find((x) => x.id === n.gearId);
+                      const stock = g ? Number(g.qty) || 1 : 0;
+                      return (
+                        <div className={`line${n.qty > stock ? " over" : ""}`} key={n.gearId}>
+                          <div className="ln">
+                            {g?.name ?? "видалена картка"}
+                            <em className={n.qty > stock ? "warn" : undefined}>
+                              {n.qty > stock ? `у наявності лише ${stock}` : `${stock} шт у парку`}
+                            </em>
+                          </div>
+                          <NumberField value={n.qty} placeholder="1" ariaLabel="Скільки треба"
+                            onChange={(v) => setNeedQty(n.gearId, v)} />
+                          <div />
+                          <div />
+                          <button className="x" aria-label="Прибрати" onClick={() => toggleNeed(n.gearId)}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {p && (
