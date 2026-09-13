@@ -260,7 +260,12 @@ export default function GearSheet({
             <button
               className="btn primary"
               disabled={pending || !draft.name.trim()}
-              onClick={() => onSave(billable ? draft : { ...draft, rateUah: 0, rateUsd: 0 })}
+              onClick={() => {
+                // Група пишеться вже нормалізованою — так стара вільна назва
+                // виправляється в базі сама, щойно картку відкрили й зберегли.
+                const next = { ...draft, category: normalizeCategory(draft.category) };
+                onSave(billable ? next : { ...next, rateUah: 0, rateUsd: 0 });
+              }}
             >
               {pending ? "Зберігаю…" : "Зберегти"}
             </button>

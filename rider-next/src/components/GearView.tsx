@@ -41,10 +41,11 @@ export default function GearView({
   const sorted = [...gear].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "uk"));
 
   // Групи в порядку CATEGORIES; усе незнайоме падає в «Інше».
-  const groups = CATEGORIES.map((cat) => ({
-    cat,
-    items: sorted.filter((g) => normalizeCategory(g.category) === cat),
-  })).filter((x) => x.items.length > 0);
+  const known = new Set<string>(CATEGORIES);
+  const extra = Array.from(new Set(sorted.map((g) => normalizeCategory(g.category)))).filter((c) => !known.has(c));
+  const groups = [...CATEGORIES, ...extra]
+    .map((cat) => ({ cat, items: sorted.filter((g) => normalizeCategory(g.category) === cat) }))
+    .filter((x) => x.items.length > 0);
 
   const paidOff = sorted.filter((g) => isBillable(normalizeCategory(g.category)) && payback(orders, g, settings).pct >= 100).length;
   const invested = { UAH: 0, USD: 0 };
