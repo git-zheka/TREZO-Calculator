@@ -31,15 +31,16 @@ export default function GearView({
   const items = gear.map((g) => ({ g, p: payback(orders, g, settings) })).sort((a, b) => b.p.pct - a.p.pct);
   const paidOff = items.filter((x) => x.p.pct >= 100).length;
   const invested = { UAH: 0, USD: 0 };
-  for (const g of gear) invested[g.purchaseCurrency] += Number(g.purchasePrice) || 0;
+  for (const g of gear) invested[g.purchaseCurrency] += (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1);
+  const totalUnits = gear.reduce((s, g) => s + (Number(g.qty) || 1), 0);
 
   return (
     <>
       <div className="tiles">
         <div className="tile">
           <div className="k">Одиниць у парку</div>
-          <div className="v num">{gear.length}</div>
-          <div className="d">{paidOff} {plural(paidOff, "окупилась", "окупились", "окупились")} повністю</div>
+          <div className="v num">{totalUnits}</div>
+          <div className="d">{gear.length} {plural(gear.length, "позиція", "позиції", "позицій")} · {paidOff} {plural(paidOff, "окупилась", "окупились", "окупились")}</div>
         </div>
         <div className="tile">
           <div className="k">Вкладено, ₴</div>
@@ -79,12 +80,15 @@ export default function GearView({
                 </span>
               </div>
               <div className="bar"><i className={full ? "full" : ""} style={{ width: `${Math.min(100, p.pct)}%` }} /></div>
-              <div className="grow"><span>Куплено за</span><b>{money(p.price, p.cur)}</b></div>
+              <div className="grow">
+                <span>Куплено за</span>
+                <b>{p.units > 1 ? `${money(p.unitPrice, p.cur)} × ${p.units} = ${money(p.price, p.cur)}` : money(p.price, p.cur)}</b>
+              </div>
               <div className="grow">
                 <span>Зароблено</span>
                 <b>{money(p.earnedSame, p.cur)}{p.earnedOther ? ` + ${money(p.earnedOther, p.other)}` : ""}</b>
               </div>
-              <div className="grow"><span>Здавалось</span><b>{p.uses}× · {p.units} од.</b></div>
+              <div className="grow"><span>Здавалось</span><b>{p.uses}× · {p.unitsRented} од.</b></div>
             </button>
           );
         })}

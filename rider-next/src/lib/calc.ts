@@ -21,13 +21,18 @@ export const counted = (o: Order) => o.status === "done";
 export type Payback = {
   cur: Currency;
   other: Currency;
+  /** Повне вкладення: ціна за одиницю × кількість */
   price: number;
+  /** Ціна однієї одиниці */
+  unitPrice: number;
+  units: number;
   earned: number;
   earnedSame: number;
   earnedOther: number;
   pct: number;
   uses: number;
-  units: number;
+  /** Скільки одиниць сумарно віддано в оренду за всі замовлення */
+  unitsRented: number;
   last: string | null;
   usesLeft: number | null;
   left: number;
@@ -52,7 +57,9 @@ export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
   const e = gearEarnings(orders, g.id);
   const cur: Currency = g.purchaseCurrency || "UAH";
   const other: Currency = cur === "UAH" ? "USD" : "UAH";
-  const price = Number(g.purchasePrice) || 0;
+  // Ціна покупки — за ОДНУ одиницю, як і ставка оренди.
+  // Окупність міряється проти повного вкладення в позицію.
+  const price = (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1);
   const earnedSame = e[cur];
   const earnedOther = e[other];
   const rate = Number(settings.rate) || 0;
@@ -63,7 +70,13 @@ export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
   const perUse = e.uses > 0 ? earned / e.uses : 0;
   const left = Math.max(0, price - earned);
   const usesLeft = perUse > 0 ? Math.ceil(left / perUse) : null;
-  return { cur, other, price, earned, earnedSame, earnedOther, pct, uses: e.uses, units: e.units, last: e.last, usesLeft, left };
+  return {
+    cur, other, price,
+    unitPrice: Number(g.purchasePrice) || 0,
+    units: Number(g.qty) || 1,
+    earned, earnedSame, earnedOther, pct,
+    uses: e.uses, unitsRented: e.units, last: e.last, usesLeft, left,
+  };
 }
 
 /* ---------- замовники ---------- */

@@ -147,7 +147,10 @@ export default function StatsView({ orders, gear, settings }: { orders: Order[];
                         <span className="mono num" style={{ fontSize: 12 }}>{p.pct}%</span>
                       </div>
                     </td>
-                    <td className="n">{money(p.price, p.cur)}</td>
+                    <td className="n">
+                      {money(p.price, p.cur)}
+                      {p.units > 1 ? <div className="hint mono">{money(p.unitPrice, p.cur)} × {p.units}</div> : null}
+                    </td>
                     <td className="n">
                       {money(p.earnedSame, p.cur)}
                       {p.earnedOther ? <div className="hint mono">+ {money(p.earnedOther, p.other)}</div> : null}

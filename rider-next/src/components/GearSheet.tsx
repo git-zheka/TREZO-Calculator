@@ -73,7 +73,7 @@ export default function GearSheet({
 
           <div className="fgrid">
             <label className="f">
-              <span>Ціна покупки</span>
+              <span>Ціна покупки за 1 шт</span>
               <input className="i" type="number" min={0} step={1} value={draft.purchasePrice} onChange={(e) => set("purchasePrice", Number(e.target.value) || 0)} />
             </label>
             <label className="f">
@@ -101,6 +101,11 @@ export default function GearSheet({
               <input className="i" type="number" min={0} step={1} value={draft.rateUsd} onChange={(e) => set("rateUsd", Number(e.target.value) || 0)} />
             </label>
           </div>
+          {(Number(draft.qty) || 1) > 1 && (Number(draft.purchasePrice) || 0) > 0 && (
+            <p className="hint">
+              Разом за {draft.qty} шт: <b>{money((Number(draft.purchasePrice) || 0) * (Number(draft.qty) || 1), draft.purchaseCurrency)}</b> — саме проти цієї суми рахується окупність.
+            </p>
+          )}
           <p className="hint">
             Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.
           </p>
@@ -115,7 +120,7 @@ export default function GearSheet({
                 <i className={p.pct >= 100 ? "full" : ""} style={{ width: `${Math.min(100, p.pct)}%` }} />
               </div>
               <div className="grow" style={{ marginTop: 10 }}>
-                <span>Здавалось {p.uses}× · {p.units} од.</span>
+                <span>Здавалось {p.uses}× · {p.unitsRented} од.</span>
                 <span>{p.last ? `востаннє ${fmtDate(p.last)}` : ""}</span>
               </div>
             </div>
