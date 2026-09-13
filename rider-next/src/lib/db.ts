@@ -28,6 +28,7 @@ export const upsertOrder = (o: Order): Promise<void> => store.upsertOrder(o);
 export const deleteOrder = (id: string): Promise<void> => store.deleteOrder(id);
 export const upsertGear = (g: Gear): Promise<void> => store.upsertGear(g);
 export const deleteGear = (id: string): Promise<void> => store.deleteGear(id);
+export const reorderGear = (ids: string[]): Promise<void> => store.reorderGear(ids);
 export const findOrCreateClient = (name: string): Promise<Client | null> => store.findOrCreateClient(name);
 export const saveRate = (rate: number): Promise<void> => store.saveRate(rate);
 export const rotateIcsToken = (): Promise<string> => store.rotateIcsToken();

@@ -54,6 +54,11 @@ export async function saveGear(gear: Gear) {
   revalidatePath("/");
 }
 
+export async function reorderGear(ids: string[]) {
+  await db.reorderGear(ids);
+  revalidatePath("/");
+}
+
 export async function removeGear(id: string) {
   await db.deleteGear(id);
   revalidatePath("/");

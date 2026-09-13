@@ -58,7 +58,32 @@ export type Gear = {
   notes: string;
   parts: GearPart[];
   needs: GearLink[];
+  /** Порядок картки всередині своєї групи; менше — вище */
+  sort: number;
 };
+
+/** Групи в парку. Порядок цього масиву задає порядок секцій на вкладці. */
+export const CATEGORIES = [
+  "Звук",
+  "Світло",
+  "Мультимедія",
+  "Пульти та контролери",
+  "Ефекти",
+  "Комутація",
+  "Стійки",
+  "Інше",
+] as const;
+
+/**
+ * Комутація і стійки окремо не здаються — вони їдуть як супутнє до основної
+ * позиції. Тож у них немає ставки оренди й немає власної окупності:
+ * заробляє світло, а не кабель до нього. Вартість покупки при цьому
+ * лишається у вкладеннях, інакше парк виглядав би дешевшим, ніж є.
+ */
+export const NON_BILLABLE: readonly string[] = ["Комутація", "Стійки"];
+export const isBillable = (category: string) => !NON_BILLABLE.includes(category);
+export const normalizeCategory = (c: string) =>
+  (CATEGORIES as readonly string[]).includes(c) ? c : c.trim() ? c : "Інше";
 
 export type Client = {
   id: string;

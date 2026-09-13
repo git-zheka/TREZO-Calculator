@@ -110,7 +110,14 @@ export async function upsertGear(g: Gear) {
     const i = s.gear.findIndex((x) => x.id === g.id);
     if (i >= 0) s.gear[i] = g;
     else s.gear.push(g);
-    s.gear.sort((a, b) => a.name.localeCompare(b.name, "uk"));
+    s.gear.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "uk"));
+  });
+}
+
+export async function reorderGear(ids: string[]) {
+  await mutate((s) => {
+    s.gear = s.gear.map((g) => ({ ...g, sort: ids.indexOf(g.id) >= 0 ? ids.indexOf(g.id) : g.sort ?? 0 }));
+    s.gear.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "uk"));
   });
 }
 

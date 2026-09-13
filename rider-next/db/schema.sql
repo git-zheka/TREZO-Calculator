@@ -28,6 +28,8 @@ create table if not exists gear (
 alter table gear add column if not exists parts jsonb not null default '[]'::jsonb;
 -- Комутація: посилання на інші картки (кабелі, стійки), які їдуть разом
 alter table gear add column if not exists needs jsonb not null default '[]'::jsonb;
+-- Ручний порядок карток усередині групи
+alter table gear add column if not exists sort integer not null default 0;
 
 create table if not exists orders (
   id          text primary key,

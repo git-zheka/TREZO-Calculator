@@ -2,12 +2,10 @@
 
 import { useEffect } from "react";
 import type { Gear, GearPart, Order, Settings } from "@/lib/types";
-import { GEAR_STATUS_LABEL } from "@/lib/types";
+import { CATEGORIES, GEAR_STATUS_LABEL, isBillable, normalizeCategory } from "@/lib/types";
 import { payback } from "@/lib/calc";
 import { fmtDate, money, num } from "@/lib/format";
 import NumberField from "./NumberField";
-
-const CATEGORIES = ["Звук", "Світло", "DJ-пульт", "Ефекти", "Кабелі", "Стійки", "Транспорт"];
 
 export default function GearSheet({
   draft,
@@ -48,6 +46,7 @@ export default function GearSheet({
   const dropPart = (i: number) => set("parts", parts.filter((_, idx) => idx !== i));
   const partsCost = parts.reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
 
+  const billable = isBillable(normalizeCategory(draft.category));
   const needs = draft.needs ?? [];
   const others = allGear.filter((g) => g.id !== draft.id && g.status !== "sold");
   const toggleNeed = (gearId: string) => {
@@ -78,9 +77,10 @@ export default function GearSheet({
 
           <div className="fgrid">
             <label className="f">
-              <span>Категорія</span>
-              <input className="i" list="catList" value={draft.category} placeholder="Звук, Світло, DJ-пульт" onChange={(e) => set("category", e.target.value)} />
-              <datalist id="catList">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
+              <span>Група</span>
+              <select className="i" value={normalizeCategory(draft.category)} onChange={(e) => set("category", e.target.value)}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </label>
             <label className="f">
               <span>Скільки одиниць</span>
@@ -112,19 +112,28 @@ export default function GearSheet({
             </label>
           </div>
 
-          <div className="fgrid">
-            <label className="f">
-              <span>Дефолтна ціна оренди, ₴</span>
-              <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
-            </label>
-            <label className="f">
-              <span>Дефолтна ціна оренди, $</span>
-              <NumberField className="i" value={draft.rateUsd} onChange={(n) => set("rateUsd", n)} />
-            </label>
-          </div>
-          <p className="hint">
-            Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.
-          </p>
+          {billable ? (
+            <>
+              <div className="fgrid">
+                <label className="f">
+                  <span>Дефолтна ціна оренди, ₴</span>
+                  <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
+                </label>
+                <label className="f">
+                  <span>Дефолтна ціна оренди, $</span>
+                  <NumberField className="i" value={draft.rateUsd} onChange={(n) => set("rateUsd", n)} />
+                </label>
+              </div>
+              <p className="hint">
+                Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.
+              </p>
+            </>
+          ) : (
+            <p className="hint">
+              «{normalizeCategory(draft.category)}» окремо не здається, тому ставки оренди тут немає — у замовленні позиція стане з нульовою ціною.
+              Вартість покупки при цьому враховується у вкладеннях, а кількість — у перевірці на задвоєння.
+            </p>
+          )}
 
           <div>
             <div className="eyebrow" style={{ marginBottom: 7 }}>Комплектація</div>
@@ -248,7 +257,11 @@ export default function GearSheet({
           <span className="hint">{exists ? "Зміни цін не перераховують минулі замовлення" : "Картку можна буде відредагувати будь-коли"}</span>
           <div className="rowflex">
             <button className="btn ghost" onClick={onClose}>Скасувати</button>
-            <button className="btn primary" disabled={pending || !draft.name.trim()} onClick={() => onSave(draft)}>
+            <button
+              className="btn primary"
+              disabled={pending || !draft.name.trim()}
+              onClick={() => onSave(billable ? draft : { ...draft, rateUah: 0, rateUsd: 0 })}
+            >
               {pending ? "Зберігаю…" : "Зберегти"}
             </button>
           </div>

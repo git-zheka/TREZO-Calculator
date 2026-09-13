@@ -24,7 +24,7 @@ type Row = Record<string, unknown>;
 const ORDER_COLS = `id, to_char(date,'YYYY-MM-DD') as date, client_id, client_name, title,
                     kind, currency, status, expenses, notes, items`;
 const GEAR_COLS = `id, name, category, qty, to_char(purchase_date,'YYYY-MM-DD') as purchase_date,
-                   purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts, needs`;
+                   purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts, needs, sort`;
 
 const asOrder = (r: Row): Order => ({
   id: String(r.id),
@@ -54,6 +54,7 @@ const asGear = (r: Row): Gear => ({
   notes: (r.notes as string) ?? "",
   parts: Array.isArray(r.parts) ? (r.parts as Gear["parts"]) : [],
   needs: Array.isArray(r.needs) ? (r.needs as Gear["needs"]) : [],
+  sort: Number(r.sort) || 0,
 });
 
 const asClient = (r: Row): Client => ({
@@ -67,7 +68,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const db = sql();
   const [orders, gear, clients, settings] = await Promise.all([
     db.query(`select ${ORDER_COLS} from orders order by date desc`),
-    db.query(`select ${GEAR_COLS} from gear order by name`),
+    db.query(`select ${GEAR_COLS} from gear order by sort, name`),
     db`select id, name, type, notes from clients order by name`,
     db`select * from settings where id = 1`,
   ]);
@@ -115,16 +116,24 @@ export async function deleteOrder(id: string) {
 export async function upsertGear(g: Gear) {
   const db = sql();
   await db`
-    insert into gear (id, name, category, qty, purchase_date, purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts, needs)
+    insert into gear (id, name, category, qty, purchase_date, purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts, needs, sort)
     values (${g.id}, ${g.name}, ${g.category}, ${g.qty}, ${g.purchaseDate || null}, ${g.purchasePrice},
             ${g.purchaseCurrency}, ${g.rateUah}, ${g.rateUsd}, ${g.status}, ${g.notes},
-            ${JSON.stringify(g.parts ?? [])}::jsonb, ${JSON.stringify(g.needs ?? [])}::jsonb)
+            ${JSON.stringify(g.parts ?? [])}::jsonb, ${JSON.stringify(g.needs ?? [])}::jsonb, ${g.sort ?? 0})
     on conflict (id) do update set
       name = excluded.name, category = excluded.category, qty = excluded.qty,
       purchase_date = excluded.purchase_date, purchase_price = excluded.purchase_price,
       purchase_currency = excluded.purchase_currency, rate_uah = excluded.rate_uah,
       rate_usd = excluded.rate_usd, status = excluded.status, notes = excluded.notes,
-      parts = excluded.parts, needs = excluded.needs`;
+      parts = excluded.parts, needs = excluded.needs, sort = excluded.sort`;
+}
+
+/** Записує новий порядок: індекс у масиві стає значенням sort. */
+export async function reorderGear(ids: string[]) {
+  const db = sql();
+  for (let i = 0; i < ids.length; i++) {
+    await db`update gear set sort = ${i} where id = ${ids[i]}`;
+  }
 }
 
 export async function deleteGear(id: string) {

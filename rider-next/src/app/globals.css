@@ -163,6 +163,18 @@ h2.sec { font-family: var(--font-display); font-weight: 600; font-size: 15px; le
 .pill.s-cancelled { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 40%, transparent); background: color-mix(in srgb, var(--crit) 8%, transparent); }
 
 /* gear */
+.group-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.group-head h3 { margin: 0; font-family: var(--font-display); font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; }
+.gear-wrap { position: relative; }
+.gear-wrap.dragging { opacity: .45; }
+.gear-wrap .gear { width: 100%; }
+.gear-order { position: absolute; top: 8px; right: 8px; z-index: 2; display: flex; align-items: center; gap: 2px; opacity: 0; transition: opacity .12s; }
+.gear-wrap:hover .gear-order, .gear-wrap:focus-within .gear-order { opacity: 1; }
+.gear-order .grip { color: var(--muted); font-size: 13px; cursor: grab; line-height: 1; }
+.gear-order .ord { border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-2); width: 22px; height: 22px; border-radius: 6px; cursor: pointer; font-size: 11px; line-height: 1; padding: 0; }
+.gear-order .ord:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+.gear-order .ord:disabled { opacity: .3; cursor: default; }
+@media (hover: none) { .gear-order { opacity: 1; } }
 .gear-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 12px; }
 .gear { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; text-align: left; color: inherit; }
 .gear:hover { border-color: var(--line-strong); }
