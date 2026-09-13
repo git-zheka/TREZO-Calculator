@@ -9,6 +9,8 @@ export type OrderItem = {
   name: string;
   qty: number;
   price: number;
+  /** Комплектація на момент замовлення — щоб не забути взяти. Копія, не посилання. */
+  parts?: { name: string; qty: number }[];
 };
 
 export type Order = {
@@ -25,6 +27,14 @@ export type Order = {
   items: OrderItem[];
 };
 
+/** Складова комплекту: сумка, пульт, кабель. Окремо не здається, але коштувала грошей. */
+export type GearPart = {
+  name: string;
+  qty: number;
+  /** Ціна покупки за одну штуку; входить у вкладення в позицію */
+  price: number;
+};
+
 export type Gear = {
   id: string;
   name: string;
@@ -37,6 +47,7 @@ export type Gear = {
   rateUsd: number;
   status: GearStatus;
   notes: string;
+  parts: GearPart[];
 };
 
 export type Client = {

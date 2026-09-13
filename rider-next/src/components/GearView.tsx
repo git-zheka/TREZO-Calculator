@@ -31,7 +31,11 @@ export default function GearView({
   const items = gear.map((g) => ({ g, p: payback(orders, g, settings) })).sort((a, b) => b.p.pct - a.p.pct);
   const paidOff = items.filter((x) => x.p.pct >= 100).length;
   const invested = { UAH: 0, USD: 0 };
-  for (const g of gear) invested[g.purchaseCurrency] += (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1);
+  for (const g of gear) {
+    invested[g.purchaseCurrency] +=
+      (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1) +
+      (g.parts ?? []).reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
+  }
   const totalUnits = gear.reduce((s, g) => s + (Number(g.qty) || 1), 0);
 
   return (
@@ -81,9 +85,22 @@ export default function GearView({
               </div>
               <div className="bar"><i className={full ? "full" : ""} style={{ width: `${Math.min(100, p.pct)}%` }} /></div>
               <div className="grow">
-                <span>Куплено за</span>
-                <b>{p.units > 1 ? `${money(p.unitPrice, p.cur)} × ${p.units} = ${money(p.price, p.cur)}` : money(p.price, p.cur)}</b>
+                <span>Вкладено</span>
+                <b>{money(p.price, p.cur)}</b>
               </div>
+              {(p.units > 1 || p.partsCost > 0) && (
+                <div className="grow" style={{ marginTop: -6, fontSize: 12 }}>
+                  <span className="hint">
+                    {p.units > 1 ? `${money(p.unitPrice, p.cur)} × ${p.units}` : money(p.unitPrice, p.cur)}
+                    {p.partsCost > 0 ? ` + комплект ${money(p.partsCost, p.cur)}` : ""}
+                  </span>
+                </div>
+              )}
+              {(g.parts ?? []).filter((x) => x.name.trim()).length > 0 && (
+                <div className="hint" style={{ fontSize: 11.5, lineHeight: 1.35 }}>
+                  У комплекті: {(g.parts ?? []).filter((x) => x.name.trim()).map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)).join(", ")}
+                </div>
+              )}
               <div className="grow">
                 <span>Зароблено</span>
                 <b>{money(p.earnedSame, p.cur)}{p.earnedOther ? ` + ${money(p.earnedOther, p.other)}` : ""}</b>

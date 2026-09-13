@@ -26,6 +26,8 @@ export type Payback = {
   /** Ціна однієї одиниці */
   unitPrice: number;
   units: number;
+  /** Скільки коштувала комплектація — сумки, пульти, кабелі */
+  partsCost: number;
   earned: number;
   earnedSame: number;
   earnedOther: number;
@@ -59,7 +61,9 @@ export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
   const other: Currency = cur === "UAH" ? "USD" : "UAH";
   // Ціна покупки — за ОДНУ одиницю, як і ставка оренди.
   // Окупність міряється проти повного вкладення в позицію.
-  const price = (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1);
+  const units = Number(g.qty) || 1;
+  const partsCost = (g.parts ?? []).reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
+  const price = (Number(g.purchasePrice) || 0) * units + partsCost;
   const earnedSame = e[cur];
   const earnedOther = e[other];
   const rate = Number(settings.rate) || 0;
@@ -73,7 +77,8 @@ export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
   return {
     cur, other, price,
     unitPrice: Number(g.purchasePrice) || 0,
-    units: Number(g.qty) || 1,
+    units,
+    partsCost,
     earned, earnedSame, earnedOther, pct,
     uses: e.uses, unitsRented: e.units, last: e.last, usesLeft, left,
   };

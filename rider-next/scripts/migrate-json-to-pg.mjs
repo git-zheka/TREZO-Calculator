@@ -43,15 +43,17 @@ console.log(`✓ замовників: ${clients.length}`);
 for (const g of gear) {
   await sql`
     insert into gear (id, name, category, qty, purchase_date, purchase_price, purchase_currency,
-                      rate_uah, rate_usd, status, notes)
+                      rate_uah, rate_usd, status, notes, parts)
     values (${g.id}, ${g.name}, ${g.category ?? ""}, ${g.qty ?? 1}, ${g.purchaseDate || null},
             ${g.purchasePrice ?? 0}, ${g.purchaseCurrency ?? "UAH"}, ${g.rateUah ?? 0},
-            ${g.rateUsd ?? 0}, ${g.status ?? "active"}, ${g.notes ?? ""})
+            ${g.rateUsd ?? 0}, ${g.status ?? "active"}, ${g.notes ?? ""},
+            ${JSON.stringify(g.parts ?? [])}::jsonb)
     on conflict (id) do update set
       name = excluded.name, category = excluded.category, qty = excluded.qty,
       purchase_date = excluded.purchase_date, purchase_price = excluded.purchase_price,
       purchase_currency = excluded.purchase_currency, rate_uah = excluded.rate_uah,
-      rate_usd = excluded.rate_usd, status = excluded.status, notes = excluded.notes`;
+      rate_usd = excluded.rate_usd, status = excluded.status, notes = excluded.notes,
+      parts = excluded.parts`;
 }
 console.log(`✓ техніки: ${gear.length}`);
 

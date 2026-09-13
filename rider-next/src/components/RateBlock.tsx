@@ -27,14 +27,16 @@ export default function RateBlock({ settings }: { settings: Settings }) {
         1 $ =
         <input
           className="i"
-          type="number"
-          min={0}
-          step={0.5}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
           style={{ width: 96, textAlign: "right" }}
           value={value}
           placeholder="—"
           disabled={pending}
-          onChange={(e) => setValue(e.target.value)}
+          // Курс буває дробовим (41.5), тому тут тримаємо текст і чистимо
+          // лише зайві символи; число віддається на blur.
+          onChange={(e) => setValue(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
           onBlur={() => { if (Number(value || 0) !== rate) start(async () => { await setRate(Number(value) || 0); }); }}
           aria-label="Курс долара до гривні"
         />

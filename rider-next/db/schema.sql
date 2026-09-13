@@ -24,6 +24,9 @@ create table if not exists gear (
   created_at        timestamptz not null default now()
 );
 
+-- Комплектація (сумка, пульт, кабелі): додано пізніше, тому окремим ALTER
+alter table gear add column if not exists parts jsonb not null default '[]'::jsonb;
+
 create table if not exists orders (
   id          text primary key,
   date        date not null,

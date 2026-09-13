@@ -24,7 +24,7 @@ type Row = Record<string, unknown>;
 const ORDER_COLS = `id, to_char(date,'YYYY-MM-DD') as date, client_id, client_name, title,
                     kind, currency, status, expenses, notes, items`;
 const GEAR_COLS = `id, name, category, qty, to_char(purchase_date,'YYYY-MM-DD') as purchase_date,
-                   purchase_price, purchase_currency, rate_uah, rate_usd, status, notes`;
+                   purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts`;
 
 const asOrder = (r: Row): Order => ({
   id: String(r.id),
@@ -52,6 +52,7 @@ const asGear = (r: Row): Gear => ({
   rateUsd: Number(r.rate_usd) || 0,
   status: (r.status as Gear["status"]) ?? "active",
   notes: (r.notes as string) ?? "",
+  parts: Array.isArray(r.parts) ? (r.parts as Gear["parts"]) : [],
 });
 
 const asClient = (r: Row): Client => ({
@@ -113,14 +114,16 @@ export async function deleteOrder(id: string) {
 export async function upsertGear(g: Gear) {
   const db = sql();
   await db`
-    insert into gear (id, name, category, qty, purchase_date, purchase_price, purchase_currency, rate_uah, rate_usd, status, notes)
+    insert into gear (id, name, category, qty, purchase_date, purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts)
     values (${g.id}, ${g.name}, ${g.category}, ${g.qty}, ${g.purchaseDate || null}, ${g.purchasePrice},
-            ${g.purchaseCurrency}, ${g.rateUah}, ${g.rateUsd}, ${g.status}, ${g.notes})
+            ${g.purchaseCurrency}, ${g.rateUah}, ${g.rateUsd}, ${g.status}, ${g.notes},
+            ${JSON.stringify(g.parts ?? [])}::jsonb)
     on conflict (id) do update set
       name = excluded.name, category = excluded.category, qty = excluded.qty,
       purchase_date = excluded.purchase_date, purchase_price = excluded.purchase_price,
       purchase_currency = excluded.purchase_currency, rate_uah = excluded.rate_uah,
-      rate_usd = excluded.rate_usd, status = excluded.status, notes = excluded.notes`;
+      rate_usd = excluded.rate_usd, status = excluded.status, notes = excluded.notes,
+      parts = excluded.parts`;
 }
 
 export async function deleteGear(id: string) {

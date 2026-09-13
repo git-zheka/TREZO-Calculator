@@ -5,6 +5,7 @@ import type { Client, Currency, Gear, Order, OrderItem } from "@/lib/types";
 import { KIND_LABEL, STATUS_LABEL } from "@/lib/types";
 import { orderTotal } from "@/lib/calc";
 import { CUR, num } from "@/lib/format";
+import NumberField from "./NumberField";
 
 const defaultRate = (g: Gear, cur: Currency) => Number(cur === "USD" ? g.rateUsd : g.rateUah) || 0;
 
@@ -52,7 +53,11 @@ export default function OrderSheet({
     const at = draft.items.findIndex((it) => it.equipmentId === g.id);
     const items = [...draft.items];
     if (at >= 0) items.splice(at, 1);
-    else items.push({ type: "gear", equipmentId: g.id, name: g.name, qty: 1, price: defaultRate(g, draft.currency) });
+    else items.push({
+      type: "gear", equipmentId: g.id, name: g.name, qty: 1, price: defaultRate(g, draft.currency),
+      // Копія на момент замовлення: якщо комплект колись зміниться, старі замовлення лишаться як були.
+      parts: (g.parts ?? []).filter((x) => x.name.trim()).map((x) => ({ name: x.name, qty: x.qty })),
+    });
     onChange({ ...draft, items });
   };
 
@@ -119,7 +124,7 @@ export default function OrderSheet({
             </label>
             <label className="f">
               <span>Витрати (дорога, помічник)</span>
-              <input className="i" type="number" min={0} step={1} value={draft.expenses} onChange={(e) => set("expenses", Number(e.target.value) || 0)} />
+              <NumberField className="i" value={draft.expenses} onChange={(n) => set("expenses", n)} />
             </label>
           </div>
 
@@ -189,10 +194,15 @@ export default function OrderSheet({
                             : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
                       </em>
                     </div>
-                    <input type="number" min={1} step={1} value={it.qty} aria-label="Кількість" onChange={(e) => patchItem(i, { qty: Number(e.target.value) || 0 })} />
-                    <input type="number" min={0} step={1} value={it.price} aria-label="Ціна" onChange={(e) => patchItem(i, { price: Number(e.target.value) || 0 })} />
+                    <NumberField value={it.qty} ariaLabel="Кількість" placeholder="1" onChange={(n) => patchItem(i, { qty: n })} />
+                    <NumberField value={it.price} ariaLabel="Ціна за одиницю" onChange={(n) => patchItem(i, { price: n })} />
                     <div className="amt">{num((Number(it.qty) || 0) * (Number(it.price) || 0))}</div>
                     <button className="x" aria-label="Прибрати позицію" onClick={() => dropItem(i)}>✕</button>
+                    {it.parts && it.parts.length > 0 && (
+                      <div className="parts-note">
+                        у комплекті: {it.parts.map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)).join(", ")}
+                      </div>
+                    )}
                   </div>
                 );
               })}

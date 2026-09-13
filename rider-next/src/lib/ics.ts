@@ -28,7 +28,12 @@ export function summaryOf(o: Order) {
 }
 
 export function descriptionOf(o: Order) {
-  const gear = (o.items || []).filter((i) => i.type === "gear").map((i) => `• ${i.name} × ${i.qty}`);
+  const gear = (o.items || []).filter((i) => i.type === "gear").map((i) => {
+    const extra = (i.parts ?? []).length
+      ? `\n   + ${(i.parts ?? []).map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)).join(", ")}`
+      : "";
+    return `• ${i.name} × ${i.qty}${extra}`;
+  });
   const svc = (o.items || []).filter((i) => i.type === "service").map((i) => `• ${i.name}`);
   const parts = [`Статус: ${STATUS_LABEL[o.status]}`, `Сума: ${money(orderTotal(o), o.currency)}`];
   if (gear.length) parts.push(`Обладнання:\n${gear.join("\n")}`);

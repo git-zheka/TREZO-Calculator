@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import type { Gear, Order, Settings } from "@/lib/types";
+import type { Gear, GearPart, Order, Settings } from "@/lib/types";
 import { GEAR_STATUS_LABEL } from "@/lib/types";
 import { payback } from "@/lib/calc";
-import { fmtDate, money } from "@/lib/format";
+import { fmtDate, money, num } from "@/lib/format";
+import NumberField from "./NumberField";
 
 const CATEGORIES = ["Звук", "Світло", "DJ-пульт", "Ефекти", "Кабелі", "Стійки", "Транспорт"];
 
@@ -38,6 +39,14 @@ export default function GearSheet({
   const set = <K extends keyof Gear>(k: K, v: Gear[K]) => onChange({ ...draft, [k]: v });
   const p = exists ? payback(orders, draft, settings) : null;
 
+  const parts = draft.parts ?? [];
+  const addPart = () => set("parts", [...parts, { name: "", qty: 1, price: 0 }]);
+  const patchPart = (i: number, patch: Partial<GearPart>) =>
+    set("parts", parts.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
+  const dropPart = (i: number) => set("parts", parts.filter((_, idx) => idx !== i));
+  const partsCost = parts.reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 1), 0);
+  const unitsCost = (Number(draft.purchasePrice) || 0) * (Number(draft.qty) || 1);
+
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Обладнання">
@@ -63,7 +72,7 @@ export default function GearSheet({
             </label>
             <label className="f">
               <span>Скільки одиниць</span>
-              <input className="i" type="number" min={1} step={1} value={draft.qty} onChange={(e) => set("qty", Number(e.target.value) || 1)} />
+              <NumberField className="i" value={draft.qty} placeholder="1" onChange={(n) => set("qty", n || 1)} />
             </label>
             <label className="f">
               <span>Дата покупки</span>
@@ -74,7 +83,7 @@ export default function GearSheet({
           <div className="fgrid">
             <label className="f">
               <span>Ціна покупки за 1 шт</span>
-              <input className="i" type="number" min={0} step={1} value={draft.purchasePrice} onChange={(e) => set("purchasePrice", Number(e.target.value) || 0)} />
+              <NumberField className="i" value={draft.purchasePrice} onChange={(n) => set("purchasePrice", n)} />
             </label>
             <label className="f">
               <span>Валюта покупки</span>
@@ -94,21 +103,62 @@ export default function GearSheet({
           <div className="fgrid">
             <label className="f">
               <span>Дефолтна ціна оренди, ₴</span>
-              <input className="i" type="number" min={0} step={1} value={draft.rateUah} onChange={(e) => set("rateUah", Number(e.target.value) || 0)} />
+              <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
             </label>
             <label className="f">
               <span>Дефолтна ціна оренди, $</span>
-              <input className="i" type="number" min={0} step={1} value={draft.rateUsd} onChange={(e) => set("rateUsd", Number(e.target.value) || 0)} />
+              <NumberField className="i" value={draft.rateUsd} onChange={(n) => set("rateUsd", n)} />
             </label>
           </div>
-          {(Number(draft.qty) || 1) > 1 && (Number(draft.purchasePrice) || 0) > 0 && (
-            <p className="hint">
-              Разом за {draft.qty} шт: <b>{money((Number(draft.purchasePrice) || 0) * (Number(draft.qty) || 1), draft.purchaseCurrency)}</b> — саме проти цієї суми рахується окупність.
-            </p>
-          )}
           <p className="hint">
             Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.
           </p>
+
+          <div>
+            <div className="eyebrow" style={{ marginBottom: 7 }}>Комплектація</div>
+            <p className="hint" style={{ margin: "0 0 8px" }}>
+              Те, що їде разом і окремо не здається: сумка, пульт, кабелі. У сумі замовлення не зʼявляється,
+              але вартість входить у вкладення, а список — у нагадування, що взяти.
+            </p>
+            <div className="lines">
+              {parts.length > 0 && (
+                <div className="line lines-head">
+                  <div>Що входить</div>
+                  <div>К-сть</div>
+                  <div>Ціна за 1</div>
+                  <div>Сума</div>
+                  <div />
+                </div>
+              )}
+              {parts.map((x, i) => (
+                <div className="line" key={i}>
+                  <input
+                    className="i"
+                    style={{ textAlign: "left", fontFamily: "inherit" }}
+                    value={x.name}
+                    placeholder="Напр. сумка, пульт DMX"
+                    onChange={(e) => patchPart(i, { name: e.target.value })}
+                  />
+                  <NumberField value={x.qty} placeholder="1" ariaLabel="Кількість" onChange={(n) => patchPart(i, { qty: n || 1 })} />
+                  <NumberField value={x.price} ariaLabel="Ціна за одиницю" onChange={(n) => patchPart(i, { price: n })} />
+                  <div className="amt">{num((Number(x.qty) || 1) * (Number(x.price) || 0))}</div>
+                  <button className="x" aria-label="Прибрати" onClick={() => dropPart(i)}>✕</button>
+                </div>
+              ))}
+              {parts.length === 0 && (
+                <div className="empty-lines">Нічого не входить — або ще не додано.</div>
+              )}
+              <div className="totrow">
+                <button className="btn ghost sm" onClick={addPart}>＋ Додати складову</button>
+                <span className="hint">
+                  {unitsCost || partsCost
+                    ? <>Вкладено в позицію: <b>{money(unitsCost + partsCost, draft.purchaseCurrency)}</b>
+                        {partsCost ? ` (техніка ${num(unitsCost)} + комплект ${num(partsCost)})` : ""}</>
+                    : "Впиши ціну покупки, щоб рахувалась окупність"}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {p && (
             <div className="panel" style={{ margin: 0 }}>

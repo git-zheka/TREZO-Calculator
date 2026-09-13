@@ -48,6 +48,7 @@ export const emptyGear = (): Gear => ({
   rateUsd: 0,
   status: "active",
   notes: "",
+  parts: [],
 });
 
 export type StorageInfo = { kind: "json" | "postgres"; path: string | null };
