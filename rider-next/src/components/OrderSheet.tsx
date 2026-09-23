@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import type { Client, Currency, Gear, Order, OrderItem } from "@/lib/types";
+import type { Client, Currency, Gear, Order, OrderItem, Role } from "@/lib/types";
 import { KIND_LABEL, STATUS_LABEL } from "@/lib/types";
-import { orderTotal } from "@/lib/calc";
-import { CUR, num } from "@/lib/format";
+import { orderDates, orderTotal, withDates } from "@/lib/calc";
+import { CUR, addDays, daysBetween, daysWord, fmtDate, nextDay, num } from "@/lib/format";
 import NumberField from "./NumberField";
 
 const defaultRate = (g: Gear, cur: Currency) => Number(cur === "USD" ? g.rateUsd : g.rateUah) || 0;
@@ -13,6 +13,7 @@ export default function OrderSheet({
   draft,
   gear,
   clients,
+  roles,
   exists,
   pending,
   onChange,
@@ -23,6 +24,7 @@ export default function OrderSheet({
   draft: Order;
   gear: Gear[];
   clients: Client[];
+  roles: Role[];
   exists: boolean;
   pending: boolean;
   onChange: (o: Order) => void;
@@ -37,6 +39,28 @@ export default function OrderSheet({
   }, [onClose]);
 
   const set = <K extends keyof Order>(k: K, v: Order[K]) => onChange({ ...draft, [k]: v });
+
+  const dates = orderDates(draft);
+  const extra = dates.length > 1;
+  const setDates = (list: string[]) => onChange(withDates(draft, list));
+
+  /** Зсув першого дня тягне за собою решту, щоб діапазон не розривався. */
+  const setStart = (d: string) => {
+    if (!d) return;
+    if (dates.length <= 1) return setDates([d]);
+    const shift = daysBetween(dates[0], d);
+    setDates(dates.map((x) => addDays(x, shift)));
+  };
+
+  /** Кінцева дата заповнює проміжок днями поспіль; порожня — лишає один день. */
+  const setEnd = (d: string) => {
+    const start = dates[0];
+    if (!start) return;
+    if (!d || d <= start) return setDates([start]);
+    const list: string[] = [];
+    for (let cur = start; cur <= d; cur = nextDay(cur)) list.push(cur);
+    setDates(list);
+  };
 
   /** Постійні першими, решта за абеткою. Список короткий — тож чіпи, а не datalist:
    *  datalist на мобільних браузерах або не відкривається, або ховається за клавіатурою. */
@@ -53,9 +77,12 @@ export default function OrderSheet({
     // Зміна валюти переставляє дефолтні ставки — індивідуальні ціни довелося б
     // переводити за курсом, а курс тут не наше діло.
     const items = draft.items.map((it) => {
-      if (it.type !== "gear") return it;
-      const g = gear.find((x) => x.id === it.equipmentId);
-      return g ? { ...it, price: defaultRate(g, cur) } : it;
+      if (it.type === "gear") {
+        const g = gear.find((x) => x.id === it.equipmentId);
+        return g ? { ...it, price: defaultRate(g, cur) } : it;
+      }
+      const r = it.roleId ? roles.find((x) => x.id === it.roleId) : null;
+      return r ? { ...it, price: Number(cur === "USD" ? r.rateUsd : r.rateUah) || 0 } : it;
     });
     onChange({ ...draft, currency: cur, items });
   };
@@ -100,8 +127,21 @@ export default function OrderSheet({
     onChange({ ...draft, items });
   };
 
+  const roleRate = (r: Role, cur: Currency) => Number(cur === "USD" ? r.rateUsd : r.rateUah) || 0;
+
+  /** Роль — перемикач: другий тап знімає її з замовлення. */
+  const toggleRole = (r: Role) => {
+    const has = draft.items.some((it) => it.roleId === r.id);
+    onChange({
+      ...draft,
+      items: has
+        ? draft.items.filter((it) => it.roleId !== r.id)
+        : [...draft.items, { type: "service" as const, roleId: r.id, name: r.name, qty: 1, price: roleRate(r, draft.currency) }],
+    });
+  };
+
   const addService = (name: string) =>
-    onChange({ ...draft, items: [...draft.items, { type: "service", name, qty: 1, price: 0 }] });
+    onChange({ ...draft, items: [...draft.items, { type: "service", roleId: null, name, qty: 1, price: 0 }] });
 
   const patchItem = (i: number, patch: Partial<OrderItem>) => {
     const items = draft.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
@@ -127,7 +167,11 @@ export default function OrderSheet({
           <div className="fgrid">
             <label className="f">
               <span>Дата</span>
-              <input className="i" type="date" value={draft.date} onChange={(e) => set("date", e.target.value)} />
+              <input className="i" type="date" value={dates[0] ?? ""} onChange={(e) => setStart(e.target.value)} />
+            </label>
+            <label className="f">
+              <span>По (якщо кілька днів)</span>
+              <input className="i" type="date" min={dates[0] || undefined} value={dates.length > 1 ? dates[dates.length - 1] : ""} onChange={(e) => setEnd(e.target.value)} />
             </label>
             <label className="f">
               <span>Замовник</span>
@@ -166,6 +210,33 @@ export default function OrderSheet({
               })}
             </div>
           )}
+
+          {(dates.length > 1 || extra) && (
+            <div className="datechips">
+              {dates.map((d) => (
+                <span key={d} className="datechip">
+                  {fmtDate(d)}
+                  {dates.length > 1 && (
+                    <button aria-label={`Прибрати ${fmtDate(d)}`} onClick={() => setDates(dates.filter((x) => x !== d))}>✕</button>
+                  )}
+                </span>
+              ))}
+              <span className="hint">{daysWord(dates.length)} · техніка зайнята на кожен із них</span>
+            </div>
+          )}
+
+          <label className="f">
+            <span>Додати окремий день</span>
+            <input
+              className="i"
+              type="date"
+              value=""
+              onChange={(e) => { if (e.target.value) setDates([...dates, e.target.value]); }}
+            />
+            <em className="hint" style={{ fontStyle: "normal" }}>
+              Для дат не поспіль: вихідні через тиждень, два різні заходи в одного замовника.
+            </em>
+          </label>
 
           <label className="f">
             <span>Що робимо</span>
@@ -218,10 +289,26 @@ export default function OrderSheet({
           <div>
             <div className="eyebrow" style={{ marginBottom: 7 }}>Моя робота</div>
             <div className="chips">
-              <button className="chip svc" onClick={() => addService("Виступ")}>＋ Виступ</button>
-              <button className="chip svc" onClick={() => addService("Доставка і монтаж")}>＋ Доставка / монтаж</button>
-              <button className="chip svc" onClick={() => addService("Інша послуга")}>＋ Інша послуга</button>
+              {roles.map((r) => (
+                <button
+                  key={r.id}
+                  className="chip svc"
+                  data-on={draft.items.some((it) => it.roleId === r.id) ? "1" : "0"}
+                  onClick={() => toggleRole(r)}
+                >
+                  {r.name}
+                  {roleRate(r, draft.currency) > 0 && (
+                    <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(roleRate(r, draft.currency))}</span>
+                  )}
+                </button>
+              ))}
+              <button className="chip svc" onClick={() => addService("Інша послуга")}>＋ Разова послуга</button>
             </div>
+            {roles.length === 0 && (
+              <p className="hint" style={{ margin: "6px 0 0" }}>
+                Ролі (монтаж, звукооператор, DJ) додаються у вкладці «Аналітика» — після цього вони будуть тут кнопками.
+              </p>
+            )}
           </div>
 
           <div>
@@ -275,6 +362,7 @@ export default function OrderSheet({
               <div className="totrow">
                 <span className="hint">
                   Разом{draft.expenses ? ` · чистими ${num(total - draft.expenses)} ${CUR[draft.currency]}` : ""}
+                  {extra ? ` · за ${daysWord(dates.length)}, ціни не множаться на дні — постав свою, якщо береш за кожен` : ""}
                 </span>
                 <span className="tv num">{num(total)} {CUR[draft.currency]}</span>
               </div>

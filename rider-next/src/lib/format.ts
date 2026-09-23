@@ -37,6 +37,13 @@ export function nextDay(ymd: string) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Зсув дати на n днів. Рахуємо в UTC, інакше перехід на літній час губить день. */
+export function addDays(ymd: string, n: number) {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 export function daysBetween(a: string, b: string) {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
 }
@@ -46,6 +53,23 @@ export function fmtDate(s: string | null | undefined) {
   const d = new Date(s);
   return `${d.getDate()} ${MONTHS_FULL[d.getMonth()]}`;
 }
+
+/** Стисло про кілька днів: «17–19 вересня», «17 вересня і ще 2 дні». */
+export function fmtDates(dates: string[]) {
+  if (!dates.length) return "—";
+  if (dates.length === 1) return fmtDate(dates[0]);
+  const sorted = [...dates].sort();
+  const first = new Date(sorted[0]);
+  const last = new Date(sorted[sorted.length - 1]);
+  // Суцільний відрізок пишемо діапазоном, розкидані дати — числом днів.
+  const solid = daysBetween(sorted[0], sorted[sorted.length - 1]) === sorted.length - 1;
+  if (!solid) return `${fmtDate(sorted[0])} і ще ${sorted.length - 1} ${plural(sorted.length - 1, "день", "дні", "днів")}`;
+  return first.getMonth() === last.getMonth()
+    ? `${first.getDate()}–${last.getDate()} ${MONTHS_FULL[last.getMonth()]}`
+    : `${fmtDate(sorted[0])} — ${fmtDate(sorted[sorted.length - 1])}`;
+}
+
+export const daysWord = (n: number) => `${n} ${plural(n, "день", "дні", "днів")}`;
 
 export const uid = () =>
   Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);

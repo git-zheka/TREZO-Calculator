@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import type { Gear, Order, Settings } from "@/lib/types";
 import { CATEGORIES, isBillable, normalizeCategory } from "@/lib/types";
+import type { MoneyMode } from "@/lib/calc";
 import { payback } from "@/lib/calc";
 import { money, num, plural, trips } from "@/lib/format";
 import { reorderGear } from "@/app/actions";
 import RateBlock from "./RateBlock";
+import MoneyModeSwitch from "./MoneyModeSwitch";
 
 const investedIn = (g: Gear) =>
   (Number(g.purchasePrice) || 0) * (Number(g.qty) || 1) +
@@ -16,17 +18,22 @@ export default function GearView({
   orders,
   gear,
   settings,
+  mode,
+  onMode,
   onOpen,
   onNew,
 }: {
   orders: Order[];
   gear: Gear[];
   settings: Settings;
+  mode: MoneyMode;
+  onMode: (m: MoneyMode) => void;
   onOpen: (id: string) => void;
   onNew: () => void;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [, startReorder] = useTransition();
+  const confirmed = orders.filter((o) => o.status === "confirmed").length;
 
   if (!gear.length) {
     return (
@@ -47,7 +54,7 @@ export default function GearView({
     .map((cat) => ({ cat, items: sorted.filter((g) => normalizeCategory(g.category) === cat) }))
     .filter((x) => x.items.length > 0);
 
-  const paidOff = sorted.filter((g) => isBillable(normalizeCategory(g.category)) && payback(orders, g, settings).pct >= 100).length;
+  const paidOff = sorted.filter((g) => isBillable(normalizeCategory(g.category)) && payback(orders, g, settings, mode).pct >= 100).length;
   const invested = { UAH: 0, USD: 0 };
   for (const g of sorted) invested[g.purchaseCurrency] += investedIn(g);
   const totalUnits = sorted.reduce((s, g) => s + (Number(g.qty) || 1), 0);
@@ -110,9 +117,15 @@ export default function GearView({
       <div className="sec-head">
         <div>
           <h2 className="sec">Парк обладнання</h2>
-          <p className="sec-sub">Окупність — тільки з виконаних замовлень. Картки всередині групи можна перетягувати.</p>
+          <p className="sec-sub">
+            Окупність рахується {mode === "done" ? "з виконаних замовлень" : "з виконаних і підтверджених"}.
+            Картки всередині групи можна перетягувати.
+          </p>
         </div>
-        <button className="btn sm" onClick={onNew}>＋ Картка</button>
+        <div className="rowflex">
+          <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
+          <button className="btn sm" onClick={onNew}>＋ Картка</button>
+        </div>
       </div>
 
       {groups.map(({ cat, items }) => {
@@ -129,7 +142,7 @@ export default function GearView({
 
             <div className="gear-grid">
               {items.map((g, i) => {
-                const p = payback(orders, g, settings);
+                const p = payback(orders, g, settings, mode);
                 const full = p.pct >= 100;
                 return (
                   <div

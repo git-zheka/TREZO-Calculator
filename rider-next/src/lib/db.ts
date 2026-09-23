@@ -1,4 +1,4 @@
-import type { Client, Gear, Order, Snapshot } from "./types";
+import type { Client, Gear, Order, Role, Snapshot } from "./types";
 import * as json from "./store-json";
 import * as pg from "./store-pg";
 
@@ -32,6 +32,8 @@ export const reorderGear = (ids: string[]): Promise<void> => store.reorderGear(i
 export const findOrCreateClient = (name: string): Promise<Client | null> => store.findOrCreateClient(name);
 export const upsertClient = (c: Client): Promise<void> => store.upsertClient(c);
 export const deleteClient = (id: string): Promise<void> => store.deleteClient(id);
+export const upsertRole = (r: Role): Promise<void> => store.upsertRole(r);
+export const deleteRole = (id: string): Promise<void> => store.deleteRole(id);
 export const saveRate = (rate: number): Promise<void> => store.saveRate(rate);
 export const rotateIcsToken = (): Promise<string> => store.rotateIcsToken();
 

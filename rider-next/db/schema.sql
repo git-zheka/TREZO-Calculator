@@ -35,6 +35,25 @@ alter table gear add column if not exists needs jsonb not null default '[]'::jso
 -- Ручний порядок карток усередині групи
 alter table gear add column if not exists sort integer not null default 0;
 
+-- Ролі, в яких він працює: монтаж, звукооператор, DJ. Список редагується в застосунку.
+create table if not exists roles (
+  id         text primary key,
+  name       text not null,
+  rate_uah   numeric(14,2) not null default 0,
+  rate_usd   numeric(14,2) not null default 0,
+  sort       integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- Стартовий набір ставиться тільки в порожню таблицю: інакше видалена роль
+-- поверталася б при кожному наступному db:push.
+insert into roles (id, name, sort)
+select v.id, v.name, v.sort
+from (values ('role-mount', 'Монтаж / демонтаж', 0),
+             ('role-sound', 'Звукооператор', 1),
+             ('role-dj',    'DJ', 2)) as v(id, name, sort)
+where not exists (select 1 from roles);
+
 create table if not exists orders (
   id          text primary key,
   date        date not null,
@@ -52,6 +71,9 @@ create table if not exists orders (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Кілька днів на одне замовлення: оренда екрана на вихідні — це один запис і три дати
+alter table orders add column if not exists dates jsonb not null default '[]'::jsonb;
 
 create index if not exists orders_date_idx   on orders (date desc);
 create index if not exists orders_status_idx on orders (status);

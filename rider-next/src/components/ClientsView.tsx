@@ -2,8 +2,10 @@
 
 import type { Client, Order } from "@/lib/types";
 import { normalizeClientType } from "@/lib/types";
+import type { MoneyMode } from "@/lib/calc";
 import { clientStats } from "@/lib/calc";
 import { money, num, ordersWord, plural } from "@/lib/format";
+import MoneyModeSwitch from "./MoneyModeSwitch";
 
 const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
 
@@ -13,14 +15,19 @@ export default function ClientsView({
   onOpen,
   onNewClient,
   onNewOrder,
+  mode,
+  onMode,
 }: {
   orders: Order[];
   clients: Client[];
   onOpen: (id: string) => void;
   onNewClient: () => void;
   onNewOrder: () => void;
+  mode: MoneyMode;
+  onMode: (m: MoneyMode) => void;
 }) {
-  const cs = clientStats(orders, clients);
+  const cs = clientStats(orders, clients, mode);
+  const confirmed = orders.filter((o) => o.status === "confirmed").length;
 
   if (!cs.length) {
     return (
@@ -84,9 +91,15 @@ export default function ClientsView({
       <div className="sec-head">
         <div>
           <h2 className="sec">Хто дає роботу</h2>
-          <p className="sec-sub">Частка рахується від усіх замовлень; дохід — тільки з виконаних. Клік по рядку відкриває картку.</p>
+          <p className="sec-sub">
+            Частка рахується від усіх замовлень; дохід — {mode === "done" ? "тільки з виконаних" : "з виконаних і підтверджених"}.
+            Клік по рядку відкриває картку.
+          </p>
         </div>
-        <button className="btn sm" onClick={onNewClient}>＋ Замовник</button>
+        <div className="rowflex">
+          <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
+          <button className="btn sm" onClick={onNewClient}>＋ Замовник</button>
+        </div>
       </div>
 
       <div className="panel flush">

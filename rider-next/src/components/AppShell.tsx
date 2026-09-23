@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Client, Gear, Order, Snapshot } from "@/lib/types";
+import type { Client, Gear, Order, Role, Snapshot } from "@/lib/types";
+import type { MoneyMode } from "@/lib/calc";
 import { today, uid } from "@/lib/format";
-import { removeClient, removeGear, removeOrder, saveClient, saveGear, saveOrder } from "@/app/actions";
+import { removeClient, removeGear, removeOrder, removeRole, saveClient, saveGear, saveOrder, saveRole } from "@/app/actions";
 import OrdersView from "./OrdersView";
 import CalendarView from "./CalendarView";
 import GearView from "./GearView";
@@ -12,6 +13,7 @@ import StatsView from "./StatsView";
 import OrderSheet from "./OrderSheet";
 import GearSheet from "./GearSheet";
 import ClientSheet from "./ClientSheet";
+import RoleSheet from "./RoleSheet";
 
 export type View = "orders" | "calendar" | "gear" | "clients" | "stats";
 
@@ -63,6 +65,14 @@ export const emptyClient = (): Client => ({
   notes: "",
 });
 
+export const emptyRole = (sort: number): Role => ({
+  id: uid(),
+  name: "",
+  rateUah: 0,
+  rateUsd: 0,
+  sort,
+});
+
 export type StorageInfo = { kind: "json" | "postgres"; path: string | null };
 
 export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; storage: StorageInfo }) {
@@ -70,9 +80,16 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
   const [orderDraft, setOrderDraft] = useState<Order | null>(null);
   const [gearDraft, setGearDraft] = useState<Gear | null>(null);
   const [clientDraft, setClientDraft] = useState<Client | null>(null);
+  const [roleDraft, setRoleDraft] = useState<Role | null>(null);
   const [pending, start] = useTransition();
 
-  const { orders, gear, clients, settings } = snapshot;
+  const { orders, gear, clients, roles, settings } = snapshot;
+
+  // Поки жодне замовлення не виконане, режим «тільки виконане» показував би самі нулі —
+  // тож стартуємо з підтверджених, а далі перемикач у руках користувача.
+  const [mode, setMode] = useState<MoneyMode>(() =>
+    orders.some((o) => o.status === "done") ? "done" : "active",
+  );
 
   const commitOrder = (o: Order) => start(async () => { await saveOrder(o); setOrderDraft(null); });
   const dropOrder = (id: string) => start(async () => { await removeOrder(id); setOrderDraft(null); });
@@ -85,6 +102,11 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
   const openOrder = (id: string) => setOrderDraft(structuredClone(orders.find((o) => o.id === id) ?? emptyOrder()));
   const openGear = (id: string) => setGearDraft(structuredClone(gear.find((g) => g.id === id) ?? emptyGear()));
   const openClient = (id: string) => setClientDraft(structuredClone(clients.find((c) => c.id === id) ?? emptyClient()));
+
+  const commitRole = (r: Role) => start(async () => { await saveRole(r); setRoleDraft(null); });
+  const dropRole = (id: string) => start(async () => { await removeRole(id); setRoleDraft(null); });
+  const openRole = (id: string) =>
+    setRoleDraft(structuredClone(roles.find((r) => r.id === id) ?? emptyRole(roles.length)));
 
   return (
     <>
@@ -113,7 +135,17 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
             onNewOn={(date) => setOrderDraft(emptyOrder(date))}
           />
         )}
-        {view === "gear" && <GearView orders={orders} gear={gear} settings={settings} onOpen={openGear} onNew={() => setGearDraft(emptyGear())} />}
+        {view === "gear" && (
+          <GearView
+            orders={orders}
+            gear={gear}
+            settings={settings}
+            mode={mode}
+            onMode={setMode}
+            onOpen={openGear}
+            onNew={() => setGearDraft(emptyGear())}
+          />
+        )}
         {view === "clients" && (
           <ClientsView
             orders={orders}
@@ -121,9 +153,22 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
             onOpen={openClient}
             onNewClient={() => setClientDraft(emptyClient())}
             onNewOrder={() => setOrderDraft(emptyOrder())}
+            mode={mode}
+            onMode={setMode}
           />
         )}
-        {view === "stats" && <StatsView orders={orders} gear={gear} settings={settings} />}
+        {view === "stats" && (
+          <StatsView
+            orders={orders}
+            gear={gear}
+            roles={roles}
+            settings={settings}
+            mode={mode}
+            onMode={setMode}
+            onOpenRole={openRole}
+            onNewRole={() => setRoleDraft(emptyRole(roles.length))}
+          />
+        )}
 
         <p className="hint" style={{ marginTop: 28, textAlign: "center" }}>
           {storage.kind === "json"
@@ -137,6 +182,7 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
           draft={orderDraft}
           gear={gear}
           clients={clients}
+          roles={roles}
           exists={orders.some((o) => o.id === orderDraft.id)}
           pending={pending}
           onChange={setOrderDraft}
@@ -170,6 +216,20 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
           onClose={() => setClientDraft(null)}
           onSave={commitClient}
           onDelete={dropClient}
+        />
+      )}
+      {roleDraft && (
+        <RoleSheet
+          draft={roleDraft}
+          orders={orders}
+          allRoles={roles}
+          mode={mode}
+          exists={roles.some((r) => r.id === roleDraft.id)}
+          pending={pending}
+          onChange={setRoleDraft}
+          onClose={() => setRoleDraft(null)}
+          onSave={commitRole}
+          onDelete={dropRole}
         />
       )}
     </>

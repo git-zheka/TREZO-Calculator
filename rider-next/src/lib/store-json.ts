@@ -1,7 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Client, Gear, Order, Snapshot } from "./types";
+import type { Client, Gear, Order, Role, Snapshot } from "./types";
+import { DEFAULT_ROLES } from "./types";
 
 /**
  * Сховище у звичайному JSON-файлі. Увесь стан — один документ на диску.
@@ -23,6 +24,7 @@ const empty = (): Snapshot => ({
   orders: [],
   gear: [],
   clients: [],
+  roles: DEFAULT_ROLES.map((r) => ({ ...r })),
   settings: { rate: 0, icsToken: randomBytes(18).toString("hex") },
 });
 
@@ -43,11 +45,14 @@ async function read(): Promise<Snapshot> {
     const raw = await readFile(FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<Snapshot>;
     return {
-      orders: parsed.orders ?? [],
+      orders: (parsed.orders ?? []).map((o) => ({ ...o, dates: o.dates ?? [] })),
       gear: parsed.gear ?? [],
       // Старі файли не знають про regular/contact — добиваємо дефолтами при читанні,
       // інакше в інтерфейс приїде undefined і чекбокс стане неконтрольованим.
       clients: (parsed.clients ?? []).map((c) => ({ ...c, regular: c.regular === true, contact: c.contact ?? "" })),
+      // Ролі підставляються лише коли ключа ще нема — порожній список означає,
+      // що всі ролі видалили свідомо, і повертати їх не треба.
+      roles: parsed.roles ?? DEFAULT_ROLES.map((r) => ({ ...r })),
       settings: {
         rate: Number(parsed.settings?.rate) || 0,
         icsToken: parsed.settings?.icsToken || randomBytes(18).toString("hex"),
@@ -174,6 +179,22 @@ export async function deleteClient(id: string) {
   await mutate((s) => {
     s.clients = s.clients.filter((c) => c.id !== id);
     s.orders = s.orders.map((o) => (o.clientId === id ? { ...o, clientId: null } : o));
+  });
+}
+
+export async function upsertRole(r: Role) {
+  await mutate((s) => {
+    const i = s.roles.findIndex((x) => x.id === r.id);
+    if (i >= 0) s.roles[i] = r;
+    else s.roles.push(r);
+    s.roles.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || a.name.localeCompare(b.name, "uk"));
+  });
+}
+
+/** Роль зникає зі списку, але назва лишається вписаною в минулі замовлення. */
+export async function deleteRole(id: string) {
+  await mutate((s) => {
+    s.roles = s.roles.filter((r) => r.id !== id);
   });
 }
 

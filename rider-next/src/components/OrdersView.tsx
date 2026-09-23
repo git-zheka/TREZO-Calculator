@@ -2,8 +2,8 @@
 
 import type { Order } from "@/lib/types";
 import { STATUS_LABEL } from "@/lib/types";
-import { counted, orderTotal } from "@/lib/calc";
-import { MONTHS, daysBetween, fmtDate, money, num, ordersWord, plural, today } from "@/lib/format";
+import { counted, orderDates, orderTotal } from "@/lib/calc";
+import { MONTHS, daysBetween, fmtDate, fmtDates, money, num, ordersWord, plural, today } from "@/lib/format";
 
 export default function OrdersView({
   orders,
@@ -14,6 +14,7 @@ export default function OrdersView({
   onOpen: (id: string) => void;
   onNew: () => void;
 }) {
+  const year = new Date().getFullYear();
   if (!orders.length) {
     return (
       <div className="empty">
@@ -26,15 +27,24 @@ export default function OrdersView({
 
   const sorted = [...orders].sort((a, b) => b.date.localeCompare(a.date));
   const t = today();
-  const upcoming = sorted.filter((o) => o.date >= t && o.status !== "cancelled" && o.status !== "done");
+  // Багатоденне замовлення триває, доки не минув ОСТАННІЙ його день:
+  // оренда з пʼятниці по неділю в суботу ще попереду, а не позаду.
+  const lastDay = (o: Order) => orderDates(o).slice(-1)[0] ?? o.date;
+  const upcoming = sorted.filter((o) => lastDay(o) >= t && o.status !== "cancelled" && o.status !== "done");
   const doneOrders = orders.filter(counted);
-  const year = new Date().getFullYear();
-  const yearDone = doneOrders.filter((o) => new Date(o.date).getFullYear() === year);
+  const inYear = (o: Order) => new Date(o.date).getFullYear() === year;
+  const yearDone = doneOrders.filter(inYear);
+  // Підтверджене, але ще не виконане: саме тут лежить робота, розписана наперед.
+  const yearPlanned = orders.filter((o) => o.status === "confirmed" && inYear(o));
   const sum = (c: "UAH" | "USD") => yearDone.filter((o) => o.currency === c).reduce((s, o) => s + orderTotal(o), 0);
   const countIn = (c: "UAH" | "USD") => yearDone.filter((o) => o.currency === c).length;
+  const planSum = (c: "UAH" | "USD") => yearPlanned.filter((o) => o.currency === c).reduce((s, o) => s + orderTotal(o), 0);
+  const planCount = (c: "UAH" | "USD") => yearPlanned.filter((o) => o.currency === c).length;
   const lastDone = [...doneOrders].sort((a, b) => b.date.localeCompare(a.date))[0];
   const idle = lastDone ? daysBetween(lastDone.date, t) : null;
   const soonest = [...upcoming].sort((a, b) => a.date.localeCompare(b.date))[0];
+  // Дата минула, а статус лишився «Підтверджено» — саме через це гроші не потрапляють у дохід.
+  const overdue = orders.filter((o) => o.status === "confirmed" && lastDay(o) < t);
 
   return (
     <>
@@ -42,12 +52,18 @@ export default function OrdersView({
         <div className="tile">
           <div className="k">Дохід {year}, ₴</div>
           <div className="v num">{num(sum("UAH"))} <small>₴</small></div>
-          <div className="d">за {ordersWord(countIn("UAH"))}</div>
+          <div className="d">
+            за {ordersWord(countIn("UAH"))}
+            {planSum("UAH") ? <><br /><b>+ {num(planSum("UAH"))} ₴</b> заплановано за {ordersWord(planCount("UAH"))}</> : null}
+          </div>
         </div>
         <div className="tile">
           <div className="k">Дохід {year}, $</div>
           <div className="v num">{num(sum("USD"))} <small>$</small></div>
-          <div className="d">за {ordersWord(countIn("USD"))}</div>
+          <div className="d">
+            за {ordersWord(countIn("USD"))}
+            {planSum("USD") ? <><br /><b>+ {num(planSum("USD"))} $</b> заплановано за {ordersWord(planCount("USD"))}</> : null}
+          </div>
         </div>
         <div className="tile">
           <div className="k">Попереду</div>
@@ -61,6 +77,19 @@ export default function OrdersView({
         </div>
       </div>
 
+      {(!doneOrders.length || overdue.length > 0) && (
+        <div className="panel" style={{ borderColor: "color-mix(in srgb, var(--warn) 45%, transparent)" }}>
+          <div className="rowflex">
+            <span className="pill" style={{ color: "var(--warn)", borderColor: "var(--warn)" }}>Статуси</span>
+            <span style={{ fontSize: 13.5 }}>
+              {!doneOrders.length
+                ? <>Дохід нульовий, бо жодне замовлення ще не позначене <b>«Виконано»</b> — гроші рахуються після того, як робота відбулась. Заплановане видно окремим рядком у плитках вище.</>
+                : <>{overdue.length} {plural(overdue.length, "замовлення вже минуло", "замовлення вже минули", "замовлень уже минули")}, а статус досі «Підтверджено» — постав «Виконано», щоб сума потрапила в дохід і в окупність техніки.</>}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="sec-head">
         <div>
           <h2 className="sec">Усі замовлення</h2>
@@ -72,7 +101,8 @@ export default function OrdersView({
       <div className="panel flush">
         <div className="olist">
           {sorted.map((o) => {
-            const d = new Date(o.date);
+            const days = orderDates(o);
+            const d = new Date(days[0] ?? o.date);
             const gearCount = o.items.filter((i) => i.type === "gear").reduce((s, i) => s + (Number(i.qty) || 0), 0);
             const svc = o.items.filter((i) => i.type === "service").length;
             return (
@@ -82,6 +112,12 @@ export default function OrdersView({
                   <div className="otitle">{o.title || "Без назви"}</div>
                   <div className="ometa">
                     <span>{o.clientName || "—"}</span>
+                    {days.length > 1 && (
+                      <>
+                        <span className="dotsep">·</span>
+                        <span>{fmtDates(days)}</span>
+                      </>
+                    )}
                     <span className="dotsep">·</span>
                     <span>
                       {gearCount ? `${gearCount} ${plural(gearCount, "одиниця техніки", "одиниці техніки", "одиниць техніки")}` : ""}

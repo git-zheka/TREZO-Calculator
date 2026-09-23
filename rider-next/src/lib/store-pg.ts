@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import type { Client, Gear, Order, Snapshot } from "./types";
+import type { Client, Gear, Order, Role, Snapshot } from "./types";
 
 /**
  * Neon serverless driver: кожен запит іде по HTTP, без пулу з'єднань.
@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
  * Інакше драйвер робить із неї JS Date у локальній зоні процесу,
  * і toISOString() на машині за UTC зсуває день назад.
  */
-const ORDER_COLS = `id, to_char(date,'YYYY-MM-DD') as date, client_id, client_name, title,
+const ORDER_COLS = `id, to_char(date,'YYYY-MM-DD') as date, dates, client_id, client_name, title,
                     kind, currency, status, expenses, notes, items`;
 const GEAR_COLS = `id, name, category, qty, to_char(purchase_date,'YYYY-MM-DD') as purchase_date,
                    purchase_price, purchase_currency, rate_uah, rate_usd, status, notes, parts, needs, sort`;
@@ -29,6 +29,9 @@ const GEAR_COLS = `id, name, category, qty, to_char(purchase_date,'YYYY-MM-DD') 
 const asOrder = (r: Row): Order => ({
   id: String(r.id),
   date: String(r.date ?? "").slice(0, 10),
+  // dates зберігаємо текстом у jsonb, а не масивом date — тоді драйвер не робить
+  // із них JS Date і день не з'їжджає через часовий пояс процесу.
+  dates: Array.isArray(r.dates) ? (r.dates as string[]).map((d) => String(d).slice(0, 10)) : [],
   clientId: (r.client_id as string) ?? null,
   clientName: (r.client_name as string) ?? "",
   title: (r.title as string) ?? "",
@@ -68,12 +71,21 @@ const asClient = (r: Row): Client => ({
   notes: (r.notes as string) ?? "",
 });
 
+const asRole = (r: Row): Role => ({
+  id: String(r.id),
+  name: (r.name as string) ?? "",
+  rateUah: Number(r.rate_uah) || 0,
+  rateUsd: Number(r.rate_usd) || 0,
+  sort: Number(r.sort) || 0,
+});
+
 export async function loadSnapshot(): Promise<Snapshot> {
   const db = sql();
-  const [orders, gear, clients, settings] = await Promise.all([
+  const [orders, gear, clients, roles, settings] = await Promise.all([
     db.query(`select ${ORDER_COLS} from orders order by date desc`),
     db.query(`select ${GEAR_COLS} from gear order by sort, name`),
     db.query(`select ${CLIENT_COLS} from clients order by regular desc, name`),
+    db`select id, name, rate_uah, rate_usd, sort from roles order by sort, name`,
     db`select * from settings where id = 1`,
   ]);
   const s = (settings as Row[])[0];
@@ -81,8 +93,25 @@ export async function loadSnapshot(): Promise<Snapshot> {
     orders: (orders as Row[]).map(asOrder),
     gear: (gear as Row[]).map(asGear),
     clients: (clients as Row[]).map(asClient),
+    roles: (roles as Row[]).map(asRole),
     settings: { rate: Number(s?.rate) || 0, icsToken: (s?.ics_token as string) ?? "" },
   };
+}
+
+export async function upsertRole(r: Role) {
+  const db = sql();
+  await db`
+    insert into roles (id, name, rate_uah, rate_usd, sort)
+    values (${r.id}, ${r.name}, ${r.rateUah}, ${r.rateUsd}, ${r.sort})
+    on conflict (id) do update set
+      name = excluded.name, rate_uah = excluded.rate_uah,
+      rate_usd = excluded.rate_usd, sort = excluded.sort`;
+}
+
+/** Роль зникає зі списку, але назва лишається вписаною в минулі замовлення. */
+export async function deleteRole(id: string) {
+  const db = sql();
+  await db`delete from roles where id = ${id}`;
 }
 
 /** Для ICS-фіду: замовлення й налаштування без решти. */
@@ -102,11 +131,11 @@ export async function loadForIcs(token: string): Promise<Order[] | null> {
 export async function upsertOrder(o: Order) {
   const db = sql();
   await db`
-    insert into orders (id, date, client_id, client_name, title, kind, currency, status, expenses, notes, items, updated_at)
-    values (${o.id}, ${o.date}, ${o.clientId}, ${o.clientName}, ${o.title}, ${o.kind}, ${o.currency},
+    insert into orders (id, date, dates, client_id, client_name, title, kind, currency, status, expenses, notes, items, updated_at)
+    values (${o.id}, ${o.date}, ${JSON.stringify(o.dates ?? [])}::jsonb, ${o.clientId}, ${o.clientName}, ${o.title}, ${o.kind}, ${o.currency},
             ${o.status}, ${o.expenses}, ${o.notes}, ${JSON.stringify(o.items)}::jsonb, now())
     on conflict (id) do update set
-      date = excluded.date, client_id = excluded.client_id, client_name = excluded.client_name,
+      date = excluded.date, dates = excluded.dates, client_id = excluded.client_id, client_name = excluded.client_name,
       title = excluded.title, kind = excluded.kind, currency = excluded.currency,
       status = excluded.status, expenses = excluded.expenses, notes = excluded.notes,
       items = excluded.items, updated_at = now()`;

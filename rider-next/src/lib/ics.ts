@@ -1,6 +1,6 @@
 import type { Order } from "./types";
-import { CUR, money, nextDay } from "./format";
-import { orderTotal } from "./calc";
+import { CUR, fmtDate, money, nextDay } from "./format";
+import { dateRuns, orderDates, orderTotal } from "./calc";
 import { STATUS_LABEL } from "./types";
 
 const esc = (s: string) => String(s ?? "").replace(/([,;\\])/g, "\\$1").replace(/\r?\n/g, "\\n");
@@ -40,11 +40,13 @@ export function descriptionOf(o: Order) {
     return `• ${i.name} × ${i.qty}${extra}`;
   });
   const svc = (o.items || []).filter((i) => i.type === "service").map((i) => `• ${i.name}`);
+  const days = orderDates(o);
   const parts = [
     o.clientName.trim() ? `Замовник: ${o.clientName.trim()}` : "Замовник не вказаний",
     `Статус: ${STATUS_LABEL[o.status]}`,
     `Сума: ${money(orderTotal(o), o.currency)}`,
   ];
+  if (days.length > 1) parts.push(`Днів: ${days.length} — ${days.map(fmtDate).join(", ")}`);
   if (gear.length) parts.push(`Обладнання:\n${gear.join("\n")}`);
   if (svc.length) parts.push(`Робота:\n${svc.join("\n")}`);
   if (o.notes) parts.push(`Нотатки: ${o.notes}`);
@@ -65,18 +67,30 @@ export function buildIcs(orders: Order[], calendarName = "Райдер") {
     "X-PUBLISHED-TTL:PT2H",
   ];
   for (const o of orders) {
-    if (!o.date || o.status === "cancelled") continue;
-    L.push(
-      "BEGIN:VEVENT",
-      `UID:rider-${o.id}@rider`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${o.date.replace(/-/g, "")}`,
-      `DTEND;VALUE=DATE:${nextDay(o.date).replace(/-/g, "")}`,
-      fold(`SUMMARY:${esc(summaryOf(o))}`),
-      fold(`DESCRIPTION:${esc(descriptionOf(o))}`),
-      `TRANSP:${o.status === "lead" ? "TRANSPARENT" : "OPAQUE"}`,
-      "END:VEVENT",
-    );
+    if (o.status === "cancelled") continue;
+    const days = orderDates(o);
+    if (!days.length) continue;
+    // Дні поспіль — одна подія на весь відрізок; розкидані дати — окремі події.
+    // UID мусить бути різним для кожної, інакше Google лишить тільки останню.
+    const runs = dateRuns(days);
+    runs.forEach((run, i) => {
+      const from = run[0];
+      const to = run[run.length - 1];
+      const suffix = runs.length > 1 ? `-${i + 1}` : "";
+      const part = runs.length > 1 ? ` (${i + 1}/${runs.length})` : "";
+      L.push(
+        "BEGIN:VEVENT",
+        `UID:rider-${o.id}${suffix}@rider`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${from.replace(/-/g, "")}`,
+        // DTEND у all-day події — наступний день після останнього, межа невключна.
+        `DTEND;VALUE=DATE:${nextDay(to).replace(/-/g, "")}`,
+        fold(`SUMMARY:${esc(summaryOf(o) + part)}`),
+        fold(`DESCRIPTION:${esc(descriptionOf(o))}`),
+        `TRANSP:${o.status === "lead" ? "TRANSPARENT" : "OPAQUE"}`,
+        "END:VEVENT",
+      );
+    });
   }
   L.push("END:VCALENDAR");
   return L.join("\r\n");

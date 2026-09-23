@@ -1,5 +1,34 @@
-import type { Client, Currency, Gear, Order, Settings } from "./types";
-import { MONTHS, daysBetween, today } from "./format";
+import type { Client, Currency, Gear, Order, Role, Settings } from "./types";
+import { MONTHS, daysBetween, nextDay, today } from "./format";
+
+/* ---------- дати замовлення ---------- */
+
+/**
+ * Усі дні, на які замовлення займає техніку. Старі записи мають лише date,
+ * тож порожній список читається як один день — інакше вони зникли б з календаря.
+ */
+export function orderDates(o: Order): string[] {
+  const list = (o.dates ?? []).filter(Boolean);
+  if (!list.length) return o.date ? [o.date] : [];
+  return Array.from(new Set(list)).sort();
+}
+
+/** Нормалізація перед записом: без повторів, за зростанням, date = перший день. */
+export function withDates(o: Order, dates: string[]): Order {
+  const clean = Array.from(new Set(dates.filter(Boolean))).sort();
+  return { ...o, dates: clean, date: clean[0] ?? o.date };
+}
+
+/** Суцільні відрізки: [17,18,19,25] → [[17,18,19],[25]]. Для календарних подій. */
+export function dateRuns(dates: string[]): string[][] {
+  const runs: string[][] = [];
+  for (const d of [...dates].sort()) {
+    const last = runs[runs.length - 1];
+    if (last && nextDay(last[last.length - 1]) === d) last.push(d);
+    else runs.push([d]);
+  }
+  return runs;
+}
 
 /* ---------- суми ---------- */
 
@@ -13,8 +42,22 @@ export const gearRevenue = (o: Order) =>
     .filter((i) => i.type === "gear")
     .reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
 
+/**
+ * Два режими підрахунку грошей.
+ *
+ *   done   — тільки виконане: реально зароблене, на нього спирається окупність
+ *   active — виконане плюс підтверджене: скільки вже законтрактовано
+ *
+ * Другий потрібен тому, що замовлення живуть у статусі «Підтверджено» тижнями
+ * до самої дати, і поки жодне не позначене виконаним, «done» показує суцільні
+ * нулі — виглядає як зламаний підрахунок, хоч робота розписана на місяць уперед.
+ */
+export type MoneyMode = "done" | "active";
+
 /** У гроші рахуємо тільки виконані замовлення. */
 export const counted = (o: Order) => o.status === "done";
+export const contracted = (o: Order) => o.status === "done" || o.status === "confirmed";
+export const inMode = (o: Order, mode: MoneyMode) => (mode === "done" ? counted(o) : contracted(o));
 
 /* ---------- окупність ---------- */
 
@@ -40,10 +83,10 @@ export type Payback = {
   left: number;
 };
 
-export function gearEarnings(orders: Order[], gearId: string) {
+export function gearEarnings(orders: Order[], gearId: string, mode: MoneyMode = "done") {
   const out = { UAH: 0, USD: 0, uses: 0, units: 0, last: null as string | null };
   for (const o of orders) {
-    if (!counted(o)) continue;
+    if (!inMode(o, mode)) continue;
     for (const it of o.items || []) {
       if (it.type !== "gear" || it.equipmentId !== gearId) continue;
       out[o.currency] += (Number(it.qty) || 0) * (Number(it.price) || 0);
@@ -55,8 +98,8 @@ export function gearEarnings(orders: Order[], gearId: string) {
   return out;
 }
 
-export function payback(orders: Order[], g: Gear, settings: Settings): Payback {
-  const e = gearEarnings(orders, g.id);
+export function payback(orders: Order[], g: Gear, settings: Settings, mode: MoneyMode = "done"): Payback {
+  const e = gearEarnings(orders, g.id, mode);
   const cur: Currency = g.purchaseCurrency || "UAH";
   const other: Currency = cur === "UAH" ? "USD" : "UAH";
   // Ціна покупки — за ОДНУ одиницю, як і ставка оренди.
@@ -105,7 +148,7 @@ export type ClientStat = {
  * до першої роботи. Замовлення чіпляється до картки за id, а якщо його немає
  * (старі записи) — за іменем без урахування регістру.
  */
-export function clientStats(orders: Order[], clients: Client[] = []): ClientStat[] {
+export function clientStats(orders: Order[], clients: Client[] = [], mode: MoneyMode = "done"): ClientStat[] {
   const map = new Map<string, ClientStat>();
   const byName = new Map<string, string>();
 
@@ -123,7 +166,7 @@ export function clientStats(orders: Order[], clients: Client[] = []): ClientStat
     if (!map.has(key)) map.set(key, blank(key, o.clientName || "Без замовника", null));
     const m = map.get(key)!;
     m.orders += 1;
-    if (counted(o)) {
+    if (inMode(o, mode)) {
       m.done += 1;
       m[o.currency] += orderTotal(o);
     }
@@ -137,7 +180,7 @@ export function clientStats(orders: Order[], clients: Client[] = []): ClientStat
 
 export type MonthBucket = { y: number; m: number; label: string; count: number; UAH: number; USD: number; cancelled: number };
 
-export function monthlySeries(orders: Order[], months: number): MonthBucket[] {
+export function monthlySeries(orders: Order[], months: number, mode: MoneyMode = "done"): MonthBucket[] {
   const now = new Date();
   const out: MonthBucket[] = [];
   for (let i = months - 1; i >= 0; i--) {
@@ -154,9 +197,55 @@ export function monthlySeries(orders: Order[], months: number): MonthBucket[] {
       continue;
     }
     b.count += 1;
-    if (counted(o)) b[o.currency] += orderTotal(o);
+    if (inMode(o, mode)) b[o.currency] += orderTotal(o);
   }
   return out;
+}
+
+/* ---------- ким я працюю ---------- */
+
+export type RoleStat = {
+  key: string;
+  name: string;
+  role: Role | null;
+  /** Скільки замовлень містили цю роль (не рядків: дві однакові ролі в одному — це одне замовлення) */
+  orders: number;
+  UAH: number;
+  USD: number;
+  last: string | null;
+};
+
+/**
+ * Розподіл роботи по ролях. Рядок замовлення чіпляється до ролі за roleId,
+ * а старі послуги, заведені до появи ролей, — за назвою: інакше вся історія
+ * до цього оновлення випала б зі статистики.
+ */
+export function roleStats(orders: Order[], roles: Role[], mode: MoneyMode = "done"): RoleStat[] {
+  const map = new Map<string, RoleStat>();
+  const byName = new Map<string, string>();
+  for (const r of roles) {
+    map.set(r.id, { key: r.id, name: r.name, role: r, orders: 0, UAH: 0, USD: 0, last: null });
+    byName.set(r.name.trim().toLowerCase(), r.id);
+  }
+
+  for (const o of orders) {
+    if (!inMode(o, mode)) continue;
+    const seen = new Set<string>();
+    for (const it of o.items || []) {
+      if (it.type !== "service") continue;
+      const named = byName.get((it.name || "").trim().toLowerCase());
+      const key = (it.roleId && map.has(it.roleId) ? it.roleId : null) ?? named ?? `n:${(it.name || "Інше").trim()}`;
+      if (!map.has(key)) map.set(key, { key, name: it.name || "Інше", role: null, orders: 0, UAH: 0, USD: 0, last: null });
+      const m = map.get(key)!;
+      m[o.currency] += (Number(it.qty) || 0) * (Number(it.price) || 0);
+      if (!seen.has(key)) {
+        m.orders += 1;
+        seen.add(key);
+      }
+      if (!m.last || o.date > m.last) m.last = o.date;
+    }
+  }
+  return Array.from(map.values());
 }
 
 /* ---------- задвоєна техніка ---------- */
@@ -165,9 +254,13 @@ export function monthlySeries(orders: Order[], months: number): MonthBucket[] {
 export function clashDays(orders: Order[], gear: Gear[]): Map<string, string[]> {
   const byDate = new Map<string, Order[]>();
   for (const o of orders) {
-    if (o.status === "cancelled" || !o.date) continue;
-    if (!byDate.has(o.date)) byDate.set(o.date, []);
-    byDate.get(o.date)!.push(o);
+    if (o.status === "cancelled") continue;
+    // Багатоденне замовлення тримає техніку кожен свій день, тож воно
+    // потрапляє в перевірку на кожну дату окремо.
+    for (const d of orderDates(o)) {
+      if (!byDate.has(d)) byDate.set(d, []);
+      byDate.get(d)!.push(o);
+    }
   }
   const out = new Map<string, string[]>();
   byDate.forEach((os, date) => {

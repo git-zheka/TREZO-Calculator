@@ -1,26 +1,62 @@
 "use client";
 
 import { useState } from "react";
-import type { Currency, Gear, Order, Settings } from "@/lib/types";
-import { counted, gearRevenue, monthlySeries, orderTotal, payback } from "@/lib/calc";
-import { CUR, MONTHS, MONTHS_FULL, money, num, ordersWord, plural, trips } from "@/lib/format";
+import type { Currency, Gear, Order, Role, Settings } from "@/lib/types";
+import type { MoneyMode } from "@/lib/calc";
+import { gearRevenue, inMode, monthlySeries, orderTotal, payback, roleStats } from "@/lib/calc";
+import { CUR, MONTHS, MONTHS_FULL, fmtDate, money, num, ordersWord, plural, trips } from "@/lib/format";
 import BarChart, { type Bar } from "./BarChart";
 import RateBlock from "./RateBlock";
+import MoneyModeSwitch from "./MoneyModeSwitch";
 
-export default function StatsView({ orders, gear, settings }: { orders: Order[]; gear: Gear[]; settings: Settings }) {
+const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
+
+export default function StatsView({
+  orders,
+  gear,
+  roles,
+  settings,
+  mode,
+  onMode,
+  onOpenRole,
+  onNewRole,
+}: {
+  orders: Order[];
+  gear: Gear[];
+  roles: Role[];
+  settings: Settings;
+  mode: MoneyMode;
+  onMode: (m: MoneyMode) => void;
+  onOpenRole: (id: string) => void;
+  onNewRole: () => void;
+}) {
   const [cur, setCur] = useState<Currency>("UAH");
-  const done = orders.filter(counted);
+  const done = orders.filter((o) => inMode(o, mode));
+  const confirmed = orders.filter((o) => o.status === "confirmed").length;
 
   if (!done.length) {
     return (
-      <div className="empty">
-        <h3>Аналітика зʼявиться з даними</h3>
-        <p>Познач хоча б одне замовлення як «Виконано» — і тут одразу буде сезонність, розподіл по замовниках і окупність.</p>
-      </div>
+      <>
+        <div className="sec-head">
+          <div>
+            <h2 className="sec">Аналітика</h2>
+            <p className="sec-sub">Що рахувати грошима</p>
+          </div>
+          <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
+        </div>
+        <div className="empty">
+          <h3>Поки нічого рахувати</h3>
+          <p>
+            {mode === "done" && confirmed > 0
+              ? "Жодне замовлення ще не позначене «Виконано». Перемкни вгорі на «+ підтверджені» — і побачиш те, що вже законтрактовано."
+              : "Створи замовлення — і тут одразу буде сезонність, розподіл по замовниках і окупність."}
+          </p>
+        </div>
+      </>
     );
   }
 
-  const m12 = monthlySeries(orders, 12);
+  const m12 = monthlySeries(orders, 12, mode);
   const counts: Bar[] = m12.map((b) => ({
     label: b.label,
     value: b.count,
@@ -46,15 +82,27 @@ export default function StatsView({ orders, gear, settings }: { orders: Order[];
   const peak = [...byMonth].sort((a, b) => b.value - a.value)[0];
   const low = byMonth.filter((b) => b.value > 0).sort((a, b) => a.value - b.value)[0];
 
-  const paybacks = gear.map((g) => ({ g, p: payback(orders, g, settings) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
+  const paybacks = gear.map((g) => ({ g, p: payback(orders, g, settings, mode) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
+
+  const rs = roleStats(orders, roles, mode)
+    .sort((a, b) => b.orders - a.orders || b.UAH + b.USD * 40 - (a.UAH + a.USD * 40));
+  const roleOrders = rs.reduce((s, r) => s + r.orders, 0);
 
   return (
     <>
       <div className="sec-head">
         <div>
           <h2 className="sec">Аналітика</h2>
-          <p className="sec-sub">Гривня і долар рахуються окремо — без конвертації</p>
+          <p className="sec-sub">
+            Гривня і долар рахуються окремо — без конвертації.{" "}
+            {mode === "done" ? "Тільки виконані замовлення." : "Виконані разом із підтвердженими."}
+          </p>
         </div>
+        <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
+      </div>
+
+      <div className="sec-head" style={{ marginTop: -6 }}>
+        <div />
         <div className="seg">
           <button aria-pressed={cur === "UAH"} onClick={() => setCur("UAH")}>₴ Гривня</button>
           <button aria-pressed={cur === "USD"} onClick={() => setCur("USD")}>$ Долар</button>
@@ -100,10 +148,69 @@ export default function StatsView({ orders, gear, settings }: { orders: Order[];
       <div className="panel">
         <div className="chart-head">
           <h3>Дохід по місяцях, {CUR[cur]}</h3>
-          <span className="chart-note">Тільки виконані замовлення</span>
+          <span className="chart-note">{mode === "done" ? "Тільки виконані замовлення" : "Виконані та підтверджені"}</span>
         </div>
         <BarChart data={rev} color="var(--s2)" label="Дохід по місяцях" />
         <div className="legend"><span><i style={{ background: "var(--s2)" }} />Дохід у {CUR[cur]}</span></div>
+      </div>
+
+      <div className="panel">
+        <div className="chart-head">
+          <h3>Ким я працюю</h3>
+          <button className="btn sm" onClick={onNewRole}>＋ Роль</button>
+        </div>
+        {rs.length === 0 ? (
+          <p className="hint" style={{ margin: 0 }}>
+            Ролей ще немає. Додай ті, в яких працюєш — монтаж, звукооператор, DJ — і вони зʼявляться
+            у формі замовлення окремими кнопками.
+          </p>
+        ) : (
+          <div className="tbl-wrap">
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Роль</th>
+                  <th style={{ width: 170 }}>Частка виїздів</th>
+                  <th className="n">Замовлень</th>
+                  <th className="n">Гонорар ₴</th>
+                  <th className="n">Гонорар $</th>
+                  <th className="n">Востаннє</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rs.map((r, i) => {
+                  const share = roleOrders ? (r.orders / roleOrders) * 100 : 0;
+                  return (
+                    <tr
+                      key={r.key}
+                      className={r.role ? "rowlink" : undefined}
+                      onClick={r.role ? () => onOpenRole(r.role!.id) : undefined}
+                    >
+                      <td>
+                        <b>{r.name}</b>
+                        {!r.role && <div className="hint" style={{ fontSize: 11.5 }}>разова послуга, без ролі</div>}
+                      </td>
+                      <td>
+                        <div className="share">
+                          <div className="track"><i style={{ width: `${share.toFixed(1)}%`, background: SERIES[Math.min(i, 4)] }} /></div>
+                          <span className="mono num" style={{ fontSize: 12 }}>{share.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                      <td className="n">{r.orders || "—"}</td>
+                      <td className="n">{r.UAH ? num(r.UAH) : "—"}</td>
+                      <td className="n">{r.USD ? num(r.USD) : "—"}</td>
+                      <td className="n">{r.last ? fmtDate(r.last) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="hint" style={{ marginBottom: 0 }}>
+          Частка рахується від виїздів, а не від грошей: в одному замовленні може бути кілька ролей.
+          Клік по рядку відкриває роль — там ставка за замовчуванням.
+        </p>
       </div>
 
       <div className="panel">
@@ -166,7 +273,7 @@ export default function StatsView({ orders, gear, settings }: { orders: Order[];
         </div>
       )}
       <p className="hint">
-        Усього замовлень у базі: {orders.length}, з них виконаних {done.length}
+        Усього замовлень у базі: {orders.length}, з них {mode === "done" ? "виконаних" : "виконаних і підтверджених"} {done.length}
         {orders.filter((o) => o.status === "cancelled").length
           ? `, скасованих ${orders.filter((o) => o.status === "cancelled").length}`
           : ""}

@@ -164,6 +164,12 @@ h2.sec { font-family: var(--font-display); font-weight: 600; font-size: 15px; le
 .pill.sm { font-size: 10.5px; padding: 1px 6px; }
 .pill.reg { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
+/* вибрані дні замовлення */
+.datechips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: -4px; }
+.datechip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 4px 6px 4px 10px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--surface-2); white-space: nowrap; }
+.datechip button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1; padding: 3px; border-radius: 99px; }
+.datechip button:hover { color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, transparent); }
+
 /* рядок таблиці як посилання */
 .rowlink { cursor: pointer; }
 .rowlink:hover td { background: var(--surface-2); }

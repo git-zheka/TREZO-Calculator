@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import * as db from "@/lib/db";
 import { COOKIE, COOKIE_OPTIONS, checkPassword, issueToken } from "@/lib/auth";
-import type { Client, Gear, Order } from "@/lib/types";
+import type { Client, Gear, Order, Role } from "@/lib/types";
 
 /* ---------- авторизація ---------- */
 
@@ -73,6 +73,18 @@ export async function saveClient(client: Client) {
 
 export async function removeClient(id: string) {
   await db.deleteClient(id);
+  revalidatePath("/");
+}
+
+/* ---------- ролі ---------- */
+
+export async function saveRole(role: Role) {
+  await db.upsertRole({ ...role, name: role.name.trim() });
+  revalidatePath("/");
+}
+
+export async function removeRole(id: string) {
+  await db.deleteRole(id);
   revalidatePath("/");
 }
 

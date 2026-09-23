@@ -6,6 +6,8 @@ export type GearStatus = "active" | "repair" | "sold";
 export type OrderItem = {
   type: "gear" | "service";
   equipmentId?: string | null;
+  /** Для послуг: у якій ролі працював (монтаж, звукооператор, DJ). null — разова послуга. */
+  roleId?: string | null;
   name: string;
   qty: number;
   price: number;
@@ -17,7 +19,14 @@ export type OrderItem = {
 
 export type Order = {
   id: string;
+  /** Перший день замовлення. Лишається окремим полем: по ньому сортування й індекси. */
   date: string; // YYYY-MM-DD
+  /**
+   * Усі дні замовлення, коли техніка зайнята: екран можуть узяти на три дні поспіль
+   * або на дві окремі дати. Відсортований список без повторів, перший елемент = date.
+   * Порожній список у старих записах означає один день — див. orderDates().
+   */
+  dates?: string[];
   clientId: string | null;
   clientName: string;
   title: string;
@@ -129,6 +138,27 @@ export const normalizeCategory = (c: string): string => {
   return exact ?? CATEGORY_ALIASES[raw.toLowerCase()] ?? "Інше";
 };
 
+/**
+ * Роль, у якій він працює на замовленні: монтаж/демонтаж, звукооператор, DJ.
+ * Окрема сутність, а не текст у рядку, — інакше «DJ» і «діджей» стануть
+ * двома різними рядками у статистиці.
+ */
+export type Role = {
+  id: string;
+  name: string;
+  /** Дефолтний гонорар; підставляється в замовлення й там перебивається */
+  rateUah: number;
+  rateUsd: number;
+  sort: number;
+};
+
+/** Ставляться при першому запуску; далі список редагується вручну. */
+export const DEFAULT_ROLES: Role[] = [
+  { id: "role-mount", name: "Монтаж / демонтаж", rateUah: 0, rateUsd: 0, sort: 0 },
+  { id: "role-sound", name: "Звукооператор", rateUah: 0, rateUsd: 0, sort: 1 },
+  { id: "role-dj", name: "DJ", rateUah: 0, rateUsd: 0, sort: 2 },
+];
+
 export type Client = {
   id: string;
   name: string;
@@ -167,6 +197,7 @@ export type Snapshot = {
   orders: Order[];
   gear: Gear[];
   clients: Client[];
+  roles: Role[];
   settings: Settings;
 };
 

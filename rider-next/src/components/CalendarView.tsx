@@ -3,8 +3,8 @@
 import { useState } from "react";
 import type { Gear, Order, Settings } from "@/lib/types";
 import { STATUS_LABEL } from "@/lib/types";
-import { clashDays, orderTotal } from "@/lib/calc";
-import { DOW, MONTH_NOM, fmtDate, money, plural, toYmd } from "@/lib/format";
+import { clashDays, orderDates, orderTotal } from "@/lib/calc";
+import { DOW, MONTH_NOM, fmtDate, fmtDates, money, plural, toYmd } from "@/lib/format";
 import IcsPanel from "./IcsPanel";
 
 export default function CalendarView({
@@ -29,20 +29,29 @@ export default function CalendarView({
   const clashes = clashDays(orders, gear);
   const todayStr = toYmd(now);
 
+  // Багатоденне замовлення лягає в кожен свій день, а не лише в перший.
   const byDate = new Map<string, Order[]>();
   for (const o of orders) {
-    if (!o.date) continue;
-    if (!byDate.has(o.date)) byDate.set(o.date, []);
-    byDate.get(o.date)!.push(o);
+    for (const d of orderDates(o)) {
+      if (!byDate.has(d)) byDate.set(d, []);
+      byDate.get(d)!.push(o);
+    }
   }
 
+  const inMonth = (ymd: string) => {
+    const d = new Date(ymd);
+    return d.getFullYear() === cursor.y && d.getMonth() === cursor.m;
+  };
+  // У списку місяця замовлення показуємо один раз — за першим днем, що потрапив у місяць.
   const monthAll = orders
-    .filter((o) => {
-      const d = new Date(o.date);
-      return d.getFullYear() === cursor.y && d.getMonth() === cursor.m;
-    })
+    .filter((o) => orderDates(o).some(inMonth))
     .sort((a, b) => a.date.localeCompare(b.date));
-  const busyDays = new Set(monthAll.filter((o) => o.status !== "cancelled").map((o) => o.date)).size;
+  const busy = new Set<string>();
+  for (const o of monthAll) {
+    if (o.status === "cancelled") continue;
+    for (const d of orderDates(o)) if (inMonth(d)) busy.add(d);
+  }
+  const busyDays = busy.size;
   const sums = { UAH: 0, USD: 0 };
   for (const o of monthAll) if (o.status !== "cancelled") sums[o.currency] += orderTotal(o);
 
@@ -126,13 +135,17 @@ export default function CalendarView({
           <div className="panel flush">
             <div className="mlist">
               {monthAll.map((o) => {
-                const d = new Date(o.date);
+                const days = orderDates(o);
+                const d = new Date(days[0]);
                 return (
                   <button key={o.id} className="mrow" onClick={() => onOpen(o.id)}>
                     <div className="md"><b>{d.getDate()}</b>{DOW[(d.getDay() + 6) % 7]}</div>
                     <div>
                       <div className="mt">{o.title || "Замовлення"}</div>
-                      <div className="mm">{o.clientName || "—"}</div>
+                      <div className="mm">
+                        {o.clientName || "—"}
+                        {days.length > 1 && <> · {fmtDates(days)}</>}
+                      </div>
                     </div>
                     <div className="ms">
                       {money(orderTotal(o), o.currency)}
