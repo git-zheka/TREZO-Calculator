@@ -54,7 +54,7 @@ export default function GearView({
     .map((cat) => ({ cat, items: sorted.filter((g) => normalizeCategory(g.category) === cat) }))
     .filter((x) => x.items.length > 0);
 
-  const paidOff = sorted.filter((g) => isBillable(normalizeCategory(g.category)) && payback(orders, g, settings, mode).pct >= 100).length;
+  const paidOff = sorted.filter((g) => payback(orders, g, settings, mode, gear).pct >= 100).length;
   const invested = { UAH: 0, USD: 0 };
   for (const g of sorted) invested[g.purchaseCurrency] += investedIn(g);
   const totalUnits = sorted.reduce((s, g) => s + (Number(g.qty) || 1), 0);
@@ -136,13 +136,13 @@ export default function GearView({
               <h3>{cat}</h3>
               <span className="hint">
                 {items.reduce((s, g) => s + (Number(g.qty) || 1), 0)} шт
-                {!billable ? " · їде як супутнє, окремо не здається" : ""}
+                {!billable ? " · їде автоматично; окупність — частка доходу виїзду" : ""}
               </span>
             </div>
 
             <div className="gear-grid">
               {items.map((g, i) => {
-                const p = payback(orders, g, settings, mode);
+                const p = payback(orders, g, settings, mode, gear);
                 const full = p.pct >= 100;
                 return (
                   <div
@@ -166,19 +166,13 @@ export default function GearView({
                         <div className="gname">{g.name}</div>
                       </div>
 
-                      {billable ? (
-                        <>
-                          <div className="paid">
-                            <span className={`pct${full ? " ok" : ""}`}>{p.pct}%</span>
-                            <span className="hint">
-                              {full ? "окупилось" : p.usesLeft != null ? `ще ~${trips(p.usesLeft)}` : p.uses ? "заробіток в іншій валюті" : "ще не здавалось"}
-                            </span>
-                          </div>
-                          <div className="bar"><i className={full ? "full" : ""} style={{ width: `${Math.min(100, p.pct)}%` }} /></div>
-                        </>
-                      ) : (
-                        <div className="paid"><span className="hint">Без окремої ставки — вартість у вкладеннях</span></div>
-                      )}
+                      <div className="paid">
+                        <span className={`pct${full ? " ok" : ""}`}>{p.pct}%</span>
+                        <span className="hint">
+                          {full ? "окупилось" : p.usesLeft != null ? `ще ~${trips(p.usesLeft)}` : p.uses ? "заробіток в іншій валюті" : "ще не їздило"}
+                        </span>
+                      </div>
+                      <div className="bar"><i className={full ? "full" : ""} style={{ width: `${Math.min(100, p.pct)}%` }} /></div>
 
                       <div className="grow"><span>Вкладено</span><b>{money(p.price, p.cur)}</b></div>
                       {(p.units > 1 || p.partsCost > 0) && (
@@ -189,15 +183,11 @@ export default function GearView({
                           </span>
                         </div>
                       )}
-                      {billable && (
-                        <>
-                          <div className="grow">
-                            <span>Зароблено</span>
-                            <b>{money(p.earnedSame, p.cur)}{p.earnedOther ? ` + ${money(p.earnedOther, p.other)}` : ""}</b>
-                          </div>
-                          <div className="grow"><span>Здавалось</span><b>{p.uses}× · {p.unitsRented} од.</b></div>
-                        </>
-                      )}
+                      <div className="grow">
+                        <span>{p.shared ? "Частка доходу" : "Зароблено"}</span>
+                        <b>{money(p.earnedSame, p.cur)}{p.earnedOther ? ` + ${money(p.earnedOther, p.other)}` : ""}</b>
+                      </div>
+                      <div className="grow"><span>{p.shared ? "Їздило" : "Здавалось"}</span><b>{p.uses}× · {p.unitsRented} од.</b></div>
                       {(g.parts ?? []).filter((x) => x.name.trim()).length > 0 && (
                         <div className="hint" style={{ fontSize: 11.5, lineHeight: 1.35 }}>
                           У комплекті: {(g.parts ?? []).filter((x) => x.name.trim()).map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)).join(", ")}

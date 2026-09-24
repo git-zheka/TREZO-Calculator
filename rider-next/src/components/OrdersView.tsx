@@ -2,8 +2,8 @@
 
 import type { Order } from "@/lib/types";
 import { STATUS_LABEL } from "@/lib/types";
-import { counted, orderDates, orderTotal } from "@/lib/calc";
-import { MONTHS, daysBetween, fmtDate, fmtDates, money, num, ordersWord, plural, today } from "@/lib/format";
+import { counted, orderDates, orderNet, orderTotal } from "@/lib/calc";
+import { CUR, MONTHS, daysBetween, fmtDate, fmtDates, money, num, ordersWord, plural, today } from "@/lib/format";
 
 export default function OrdersView({
   orders,
@@ -36,9 +36,12 @@ export default function OrdersView({
   const yearDone = doneOrders.filter(inYear);
   // Підтверджене, але ще не виконане: саме тут лежить робота, розписана наперед.
   const yearPlanned = orders.filter((o) => o.status === "confirmed" && inYear(o));
+  // Головна цифра — чисті: оборот мінус витрати на виїзд. Оборот лишається поруч.
+  const net = (c: "UAH" | "USD") => yearDone.filter((o) => o.currency === c).reduce((s, o) => s + orderNet(o), 0);
   const sum = (c: "UAH" | "USD") => yearDone.filter((o) => o.currency === c).reduce((s, o) => s + orderTotal(o), 0);
+  const spent = (c: "UAH" | "USD") => sum(c) - net(c);
   const countIn = (c: "UAH" | "USD") => yearDone.filter((o) => o.currency === c).length;
-  const planSum = (c: "UAH" | "USD") => yearPlanned.filter((o) => o.currency === c).reduce((s, o) => s + orderTotal(o), 0);
+  const planSum = (c: "UAH" | "USD") => yearPlanned.filter((o) => o.currency === c).reduce((s, o) => s + orderNet(o), 0);
   const planCount = (c: "UAH" | "USD") => yearPlanned.filter((o) => o.currency === c).length;
   const lastDone = [...doneOrders].sort((a, b) => b.date.localeCompare(a.date))[0];
   const idle = lastDone ? daysBetween(lastDone.date, t) : null;
@@ -49,22 +52,20 @@ export default function OrdersView({
   return (
     <>
       <div className="tiles">
-        <div className="tile">
-          <div className="k">Дохід {year}, ₴</div>
-          <div className="v num">{num(sum("UAH"))} <small>₴</small></div>
-          <div className="d">
-            за {ordersWord(countIn("UAH"))}
-            {planSum("UAH") ? <><br /><b>+ {num(planSum("UAH"))} ₴</b> заплановано за {ordersWord(planCount("UAH"))}</> : null}
+        {(["UAH", "USD"] as const).map((c) => (
+          <div className="tile" key={c}>
+            <div className="k">Чистими {year}, {CUR[c]}</div>
+            <div className="v num">
+              {num(net(c))} <small>{CUR[c]}</small>
+              {sum(c) !== net(c) && <span className="gross">оборот {num(sum(c))}</span>}
+            </div>
+            <div className="d">
+              за {ordersWord(countIn(c))}
+              {spent(c) ? ` · витрат ${num(spent(c))} ${CUR[c]}` : ""}
+              {planSum(c) ? <><br /><b>+ {num(planSum(c))} {CUR[c]}</b> заплановано за {ordersWord(planCount(c))}</> : null}
+            </div>
           </div>
-        </div>
-        <div className="tile">
-          <div className="k">Дохід {year}, $</div>
-          <div className="v num">{num(sum("USD"))} <small>$</small></div>
-          <div className="d">
-            за {ordersWord(countIn("USD"))}
-            {planSum("USD") ? <><br /><b>+ {num(planSum("USD"))} $</b> заплановано за {ordersWord(planCount("USD"))}</> : null}
-          </div>
-        </div>
+        ))}
         <div className="tile">
           <div className="k">Попереду</div>
           <div className="v num">{upcoming.length}</div>
@@ -128,7 +129,10 @@ export default function OrdersView({
                     <span className={`pill s-${o.status}`}>{STATUS_LABEL[o.status]}</span>
                   </div>
                 </div>
-                <div className="osum">{money(orderTotal(o), o.currency)}</div>
+                <div className="osum">
+                  {money(orderNet(o), o.currency)}
+                  {o.expenses ? <div className="hint mono" style={{ fontWeight: 500 }}>оборот {num(orderTotal(o))}</div> : null}
+                </div>
               </button>
             );
           })}

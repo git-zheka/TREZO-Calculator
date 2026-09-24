@@ -116,12 +116,21 @@ export default function ClientSheet({
                     <i style={{ width: `${Math.min(100, share)}%` }} />
                   </div>
                   <div className="grow" style={{ marginTop: 10 }}>
-                    <span>Дохід</span>
+                    <span>Чистими</span>
                     <b>
-                      {[mine.UAH ? money(mine.UAH, "UAH") : null, mine.USD ? money(mine.USD, "USD") : null]
+                      {[mine.netUAH ? money(mine.netUAH, "UAH") : null, mine.netUSD ? money(mine.netUSD, "USD") : null]
                         .filter(Boolean).join(" · ") || "—"}
                     </b>
                   </div>
+                  {(mine.UAH !== mine.netUAH || mine.USD !== mine.netUSD) && (
+                    <div className="grow">
+                      <span>Оборот</span>
+                      <b>
+                        {[mine.UAH ? money(mine.UAH, "UAH") : null, mine.USD ? money(mine.USD, "USD") : null]
+                          .filter(Boolean).join(" · ") || "—"}
+                      </b>
+                    </div>
+                  )}
                   <div className="grow">
                     <span>Виконано</span>
                     <b>{mine.done} з {mine.orders}</b>

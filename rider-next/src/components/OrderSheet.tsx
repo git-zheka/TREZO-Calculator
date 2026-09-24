@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Client, Currency, Gear, Order, OrderItem, Role } from "@/lib/types";
-import { KIND_LABEL, STATUS_LABEL } from "@/lib/types";
-import { orderDates, orderTotal, withDates } from "@/lib/calc";
+import { KIND_LABEL, STATUS_LABEL, isBillable, normalizeCategory } from "@/lib/types";
+import { lineTotal, orderDates, orderTotal, withDates } from "@/lib/calc";
 import { CUR, addDays, daysBetween, daysWord, fmtDate, nextDay, num } from "@/lib/format";
 import NumberField from "./NumberField";
 
@@ -32,6 +32,8 @@ export default function OrderSheet({
   onSave: (o: Order) => void;
   onDelete: (id: string) => void;
 }) {
+  const [showAll, setShowAll] = useState(false);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -42,7 +44,17 @@ export default function OrderSheet({
 
   const dates = orderDates(draft);
   const extra = dates.length > 1;
-  const setDates = (list: string[]) => onChange(withDates(draft, list));
+
+  /**
+   * Зміна набору днів переставляє «Днів» у позиціях техніки: взяв екран ще на добу —
+   * сума має вирости сама. Власна робота лишається одним днем: гонорар за виступ
+   * не множиться на те, скільки днів у замовника стоїть апаратура.
+   */
+  const setDates = (list: string[]) => {
+    const next = withDates(draft, list);
+    const days = orderDates(next).length;
+    onChange({ ...next, items: next.items.map((it) => (it.type === "gear" ? { ...it, days } : it)) });
+  };
 
   /** Зсув першого дня тягне за собою решту, щоб діапазон не розривався. */
   const setStart = (d: string) => {
@@ -92,6 +104,7 @@ export default function OrderSheet({
     equipmentId: g.id,
     name: g.name,
     qty,
+    days: dates.length,
     price: defaultRate(g, draft.currency),
     // Копія на момент замовлення: якщо комплект колись зміниться, старі замовлення лишаться як були.
     parts: (g.parts ?? []).filter((x) => x.name.trim()).map((x) => ({ name: x.name, qty: x.qty })),
@@ -126,6 +139,15 @@ export default function OrderSheet({
     }
     onChange({ ...draft, items });
   };
+
+  /**
+   * Комутація і стійки в списку вибору не показуються: вони підставляються самі
+   * до позиції, з якою повʼязані. Кнопка відкриває їх, коли кабель треба дати
+   * окремо — без прив'язки до чогось.
+   */
+  const live = gear.filter((g) => g.status !== "sold");
+  const pickableGear = live.filter((g) => showAll || isBillable(normalizeCategory(g.category)));
+  const hiddenCount = live.length - live.filter((g) => isBillable(normalizeCategory(g.category))).length;
 
   const roleRate = (r: Role, cur: Currency) => Number(cur === "USD" ? r.rateUsd : r.rateUah) || 0;
 
@@ -264,12 +286,19 @@ export default function OrderSheet({
           </div>
 
           <div>
-            <div className="eyebrow" style={{ marginBottom: 7 }}>Обладнання</div>
+            <div className="eyebrow" style={{ marginBottom: 7 }}>
+              Обладнання
+              {hiddenCount > 0 && (
+                <button className="linkbtn" onClick={() => setShowAll(!showAll)}>
+                  {showAll ? "сховати комутацію" : `показати комутацію (${hiddenCount})`}
+                </button>
+              )}
+            </div>
             <div className="chips">
-              {gear.filter((g) => g.status !== "sold").length === 0 && (
+              {pickableGear.length === 0 && (
                 <span className="hint">Карток ще немає — додай їх у вкладці «Обладнання».</span>
               )}
-              {gear.filter((g) => g.status !== "sold").map((g) => (
+              {pickableGear.map((g) => (
                 <button
                   key={g.id}
                   className="chip"
@@ -315,10 +344,11 @@ export default function OrderSheet({
             <div className="eyebrow" style={{ marginBottom: 7 }}>Позиції замовлення</div>
             <div className="lines">
               {draft.items.length > 0 && (
-                <div className="line lines-head">
+                <div className={`line lines-head${extra ? " withdays" : ""}`}>
                   <div>Позиція</div>
                   <div>К-сть</div>
-                  <div>Ціна за 1</div>
+                  {extra && <div>Днів</div>}
+                  <div>Ціна/день</div>
                   <div>Сума</div>
                   <div />
                 </div>
@@ -334,7 +364,7 @@ export default function OrderSheet({
                 // Попереджаємо, але не блокуємо: одиницю можна дібрати в колеги.
                 const over = owned != null && Number(it.qty) > owned;
                 return (
-                  <div className={`line${over ? " over" : ""}`} key={`${it.equipmentId ?? it.name}-${i}`}>
+                  <div className={`line${over ? " over" : ""}${extra ? " withdays" : ""}`} key={`${it.equipmentId ?? it.name}-${i}`}>
                     <div className="ln">
                       {it.name}
                       <em className={over ? "warn" : undefined}>
@@ -348,8 +378,16 @@ export default function OrderSheet({
                       </em>
                     </div>
                     <NumberField value={it.qty} ariaLabel="Кількість" placeholder="1" onChange={(n) => patchItem(i, { qty: n })} />
-                    <NumberField value={it.price} ariaLabel="Ціна за одиницю" onChange={(n) => patchItem(i, { price: n })} />
-                    <div className="amt">{num((Number(it.qty) || 0) * (Number(it.price) || 0))}</div>
+                    {extra && (
+                      <NumberField
+                        value={Number(it.days) || 1}
+                        placeholder="1"
+                        ariaLabel="Скільки днів"
+                        onChange={(n) => patchItem(i, { days: n || 1 })}
+                      />
+                    )}
+                    <NumberField value={it.price} ariaLabel="Ціна за день" onChange={(n) => patchItem(i, { price: n })} />
+                    <div className="amt">{num(lineTotal(it))}</div>
                     <button className="x" aria-label="Прибрати позицію" onClick={() => dropItem(i)}>✕</button>
                     {it.parts && it.parts.length > 0 && (
                       <div className="parts-note">
@@ -362,7 +400,7 @@ export default function OrderSheet({
               <div className="totrow">
                 <span className="hint">
                   Разом{draft.expenses ? ` · чистими ${num(total - draft.expenses)} ${CUR[draft.currency]}` : ""}
-                  {extra ? ` · за ${daysWord(dates.length)}, ціни не множаться на дні — постав свою, якщо береш за кожен` : ""}
+                  {extra ? ` · техніка рахується за ${daysWord(dates.length)}, власна робота — за один` : ""}
                 </span>
                 <span className="tv num">{num(total)} {CUR[draft.currency]}</span>
               </div>

@@ -1,4 +1,5 @@
-import type { Client, Currency, Gear, Order, Role, Settings } from "./types";
+import type { Client, Currency, Gear, Order, OrderItem, Role, Settings } from "./types";
+import { isBillable, normalizeCategory } from "./types";
 import { MONTHS, daysBetween, nextDay, today } from "./format";
 
 /* ---------- дати замовлення ---------- */
@@ -32,15 +33,16 @@ export function dateRuns(dates: string[]): string[][] {
 
 /* ---------- суми ---------- */
 
-export const orderTotal = (o: Order) =>
-  (o.items || []).reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+/** Сума рядка: одиниці × ціна за одну × кількість днів. Днів немає — один. */
+export const lineTotal = (it: OrderItem) =>
+  (Number(it.qty) || 0) * (Number(it.price) || 0) * (Number(it.days) || 1);
+
+export const orderTotal = (o: Order) => (o.items || []).reduce((s, it) => s + lineTotal(it), 0);
 
 export const orderNet = (o: Order) => orderTotal(o) - (Number(o.expenses) || 0);
 
 export const gearRevenue = (o: Order) =>
-  (o.items || [])
-    .filter((i) => i.type === "gear")
-    .reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+  (o.items || []).filter((i) => i.type === "gear").reduce((s, it) => s + lineTotal(it), 0);
 
 /**
  * Два режими підрахунку грошей.
@@ -81,6 +83,8 @@ export type Payback = {
   last: string | null;
   usesLeft: number | null;
   left: number;
+  /** Дохід не свій, а розподілена частка — комутація, стійки */
+  shared: boolean;
 };
 
 export function gearEarnings(orders: Order[], gearId: string, mode: MoneyMode = "done") {
@@ -89,7 +93,7 @@ export function gearEarnings(orders: Order[], gearId: string, mode: MoneyMode = 
     if (!inMode(o, mode)) continue;
     for (const it of o.items || []) {
       if (it.type !== "gear" || it.equipmentId !== gearId) continue;
-      out[o.currency] += (Number(it.qty) || 0) * (Number(it.price) || 0);
+      out[o.currency] += lineTotal(it);
       out.uses += 1;
       out.units += Number(it.qty) || 0;
       if (!out.last || o.date > out.last) out.last = o.date;
@@ -98,8 +102,51 @@ export function gearEarnings(orders: Order[], gearId: string, mode: MoneyMode = 
   return out;
 }
 
-export function payback(orders: Order[], g: Gear, settings: Settings, mode: MoneyMode = "done"): Payback {
+/**
+ * Дохід, приписаний комутації та стійкам.
+ *
+ * Своєї ціни вони не мають — їдуть як супутнє, тож у замовленні стоять нулем.
+ * Щоб їхня окупність не лишалася вічним нулем, кожному виїзду віддається
+ * частка доходу цього замовлення, пропорційна вкладеним у позицію грошам
+ * серед усієї техніки, що поїхала. Кабель за 500 ₴ поруч із плазмою за 20 000
+ * отримує 1/41 доходу — приблизно стільки він у ньому й важить.
+ *
+ * Це облікова частка, а не окремі гроші: у суму замовлення вона не додається
+ * і доходу в аналітиці не збільшує.
+ */
+export function sharedEarnings(orders: Order[], g: Gear, allGear: Gear[], mode: MoneyMode) {
+  const out = { UAH: 0, USD: 0 };
+  const unitCost = (id?: string | null) => Number(allGear.find((x) => x.id === id)?.purchasePrice) || 0;
+  const mineUnit = Number(g.purchasePrice) || 0;
+  if (mineUnit <= 0) return out;
+
+  for (const o of orders) {
+    if (!inMode(o, mode)) continue;
+    const lines = (o.items || []).filter((i) => i.type === "gear" && i.equipmentId);
+    const mineQty = lines.filter((i) => i.equipmentId === g.id).reduce((s, i) => s + (Number(i.qty) || 0), 0);
+    if (!mineQty) continue;
+    const base = lines.reduce((s, l) => s + unitCost(l.equipmentId) * (Number(l.qty) || 0), 0);
+    if (base <= 0) continue;
+    out[o.currency] += gearRevenue(o) * ((mineUnit * mineQty) / base);
+  }
+  return out;
+}
+
+export function payback(
+  orders: Order[],
+  g: Gear,
+  settings: Settings,
+  mode: MoneyMode = "done",
+  allGear: Gear[] = [],
+): Payback {
   const e = gearEarnings(orders, g.id, mode);
+  // Виїзди й дати лишаються свої, а гроші комутації — розподілена частка.
+  const shared = !isBillable(normalizeCategory(g.category));
+  if (shared && allGear.length) {
+    const s = sharedEarnings(orders, g, allGear, mode);
+    e.UAH = s.UAH;
+    e.USD = s.USD;
+  }
   const cur: Currency = g.purchaseCurrency || "UAH";
   const other: Currency = cur === "UAH" ? "USD" : "UAH";
   // Ціна покупки — за ОДНУ одиницю, як і ставка оренди.
@@ -124,6 +171,7 @@ export function payback(orders: Order[], g: Gear, settings: Settings, mode: Mone
     partsCost,
     earned, earnedSame, earnedOther, pct,
     uses: e.uses, unitsRented: e.units, last: e.last, usesLeft, left,
+    shared,
   };
 }
 
@@ -136,8 +184,12 @@ export type ClientStat = {
   client: Client | null;
   orders: number;
   done: number;
+  /** Оборот — скільки виставлено замовнику */
   UAH: number;
   USD: number;
+  /** Чисті — оборот мінус витрати на виїзд (дорога, помічник) */
+  netUAH: number;
+  netUSD: number;
   last: string | null;
   idleDays: number | null;
 };
@@ -153,7 +205,7 @@ export function clientStats(orders: Order[], clients: Client[] = [], mode: Money
   const byName = new Map<string, string>();
 
   const blank = (key: string, name: string, client: Client | null): ClientStat =>
-    ({ key, name, client, orders: 0, done: 0, UAH: 0, USD: 0, last: null, idleDays: null });
+    ({ key, name, client, orders: 0, done: 0, UAH: 0, USD: 0, netUAH: 0, netUSD: 0, last: null, idleDays: null });
 
   for (const c of clients) {
     map.set(c.id, blank(c.id, c.name, c));
@@ -169,6 +221,7 @@ export function clientStats(orders: Order[], clients: Client[] = [], mode: Money
     if (inMode(o, mode)) {
       m.done += 1;
       m[o.currency] += orderTotal(o);
+      m[o.currency === "UAH" ? "netUAH" : "netUSD"] += orderNet(o);
     }
     if (!m.last || o.date > m.last) m.last = o.date;
   }
@@ -178,14 +231,21 @@ export function clientStats(orders: Order[], clients: Client[] = [], mode: Money
 
 /* ---------- сезонність ---------- */
 
-export type MonthBucket = { y: number; m: number; label: string; count: number; UAH: number; USD: number; cancelled: number };
+export type MonthBucket = {
+  y: number; m: number; label: string; count: number;
+  /** Оборот за місяць */
+  UAH: number; USD: number;
+  /** Чисті за місяць — після витрат на виїзди */
+  netUAH: number; netUSD: number;
+  cancelled: number;
+};
 
 export function monthlySeries(orders: Order[], months: number, mode: MoneyMode = "done"): MonthBucket[] {
   const now = new Date();
   const out: MonthBucket[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push({ y: d.getFullYear(), m: d.getMonth(), label: MONTHS[d.getMonth()], count: 0, UAH: 0, USD: 0, cancelled: 0 });
+    out.push({ y: d.getFullYear(), m: d.getMonth(), label: MONTHS[d.getMonth()], count: 0, UAH: 0, USD: 0, netUAH: 0, netUSD: 0, cancelled: 0 });
   }
   for (const o of orders) {
     if (!o.date) continue;
@@ -197,7 +257,10 @@ export function monthlySeries(orders: Order[], months: number, mode: MoneyMode =
       continue;
     }
     b.count += 1;
-    if (inMode(o, mode)) b[o.currency] += orderTotal(o);
+    if (inMode(o, mode)) {
+      b[o.currency] += orderTotal(o);
+      b[o.currency === "UAH" ? "netUAH" : "netUSD"] += orderNet(o);
+    }
   }
   return out;
 }
@@ -237,7 +300,7 @@ export function roleStats(orders: Order[], roles: Role[], mode: MoneyMode = "don
       const key = (it.roleId && map.has(it.roleId) ? it.roleId : null) ?? named ?? `n:${(it.name || "Інше").trim()}`;
       if (!map.has(key)) map.set(key, { key, name: it.name || "Інше", role: null, orders: 0, UAH: 0, USD: 0, last: null });
       const m = map.get(key)!;
-      m[o.currency] += (Number(it.qty) || 0) * (Number(it.price) || 0);
+      m[o.currency] += lineTotal(it);
       if (!seen.has(key)) {
         m.orders += 1;
         seen.add(key);

@@ -37,7 +37,7 @@ export default function GearSheet({
   }, [onClose]);
 
   const set = <K extends keyof Gear>(k: K, v: Gear[K]) => onChange({ ...draft, [k]: v });
-  const p = exists ? payback(orders, draft, settings) : null;
+  const p = exists ? payback(orders, draft, settings, "done", allGear) : null;
 
   const parts = draft.parts ?? [];
   const addPart = () => set("parts", [...parts, { name: "", qty: 1, price: 0 }]);
@@ -130,8 +130,10 @@ export default function GearSheet({
             </>
           ) : (
             <p className="hint">
-              «{normalizeCategory(draft.category)}» окремо не здається, тому ставки оренди тут немає — у замовленні позиція стане з нульовою ціною.
-              Вартість покупки при цьому враховується у вкладеннях, а кількість — у перевірці на задвоєння.
+              «{normalizeCategory(draft.category)}» окремо не здається, тому ставки оренди тут немає. У списку вибору
+              в замовленні така картка не показується — вона підставляється сама до тієї позиції, з якою повʼязана.
+              Окупність при цьому рахується: за кожен виїзд їй приписується частка доходу замовлення,
+              пропорційна вкладеним у неї грошам серед усієї техніки, що поїхала.
             </p>
           )}
 

@@ -64,7 +64,14 @@ export default function StatsView({
     tipTitle: b.label,
     tipNote: b.cancelled ? `скасовано: ${b.cancelled}` : undefined,
   }));
-  const rev: Bar[] = m12.map((b) => ({ label: b.label, value: b[cur], tipValue: `${num(b[cur])} ${CUR[cur]}` }));
+  // Стовпчик — чисті; оборот лишається у підказці, щоб було з чим звірити.
+  const netKey = cur === "UAH" ? "netUAH" : "netUSD";
+  const rev: Bar[] = m12.map((b) => ({
+    label: b.label,
+    value: b[netKey],
+    tipValue: `${num(b[netKey])} ${CUR[cur]}`,
+    tipNote: b[cur] !== b[netKey] ? `оборот ${num(b[cur])}` : undefined,
+  }));
 
   const last3 = m12.slice(-3).reduce((s, b) => s + b.count, 0);
   const prev3 = m12.slice(-6, -3).reduce((s, b) => s + b.count, 0);
@@ -73,6 +80,8 @@ export default function StatsView({
   const curDone = done.filter((o) => o.currency === cur);
   const total = curDone.reduce((s, o) => s + orderTotal(o), 0);
   const expenses = curDone.reduce((s, o) => s + (Number(o.expenses) || 0), 0);
+  const net = total - expenses;
+  const avgNet = curDone.length ? net / curDone.length : 0;
   const avg = curDone.length ? total / curDone.length : 0;
   const gearPart = curDone.reduce((s, o) => s + gearRevenue(o), 0);
   const svcPart = total - gearPart;
@@ -82,7 +91,7 @@ export default function StatsView({
   const peak = [...byMonth].sort((a, b) => b.value - a.value)[0];
   const low = byMonth.filter((b) => b.value > 0).sort((a, b) => a.value - b.value)[0];
 
-  const paybacks = gear.map((g) => ({ g, p: payback(orders, g, settings, mode) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
+  const paybacks = gear.map((g) => ({ g, p: payback(orders, g, settings, mode, gear) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
 
   const rs = roleStats(orders, roles, mode)
     .sort((a, b) => b.orders - a.orders || b.UAH + b.USD * 40 - (a.UAH + a.USD * 40));
@@ -111,24 +120,30 @@ export default function StatsView({
 
       <div className="tiles">
         <div className="tile">
-          <div className="k">Дохід, {CUR[cur]}</div>
-          <div className="v num">{num(total)}</div>
-          <div className="d">чистими {num(total - expenses)} після витрат</div>
+          <div className="k">Чистими, {CUR[cur]}</div>
+          <div className="v num">
+            {num(net)}
+            {expenses > 0 && <span className="gross">оборот {num(total)}</span>}
+          </div>
+          <div className="d">{expenses ? `витрат ${num(expenses)} ${CUR[cur]} — дорога, помічники` : "витрат не вписано"}</div>
         </div>
         <div className="tile">
           <div className="k">Середній чек</div>
-          <div className="v num">{num(avg)}</div>
+          <div className="v num">
+            {num(avgNet)}
+            {expenses > 0 && <span className="gross">оборот {num(avg)}</span>}
+          </div>
           <div className="d">{ordersWord(curDone.length)} у {CUR[cur]}</div>
         </div>
         <div className="tile">
           <div className="k">З оренди техніки</div>
           <div className="v num">{total ? Math.round((gearPart / total) * 100) : 0}<small>%</small></div>
-          <div className="d">{num(gearPart)} {CUR[cur]} з {num(total)}</div>
+          <div className="d">{num(gearPart)} {CUR[cur]} з обороту {num(total)}</div>
         </div>
         <div className="tile">
           <div className="k">З власної роботи</div>
           <div className="v num">{total ? Math.round((svcPart / total) * 100) : 0}<small>%</small></div>
-          <div className="d">{num(svcPart)} {CUR[cur]} — виступи, монтаж</div>
+          <div className="d">{num(svcPart)} {CUR[cur]} з обороту — виступи, монтаж</div>
         </div>
       </div>
 
@@ -147,11 +162,14 @@ export default function StatsView({
 
       <div className="panel">
         <div className="chart-head">
-          <h3>Дохід по місяцях, {CUR[cur]}</h3>
-          <span className="chart-note">{mode === "done" ? "Тільки виконані замовлення" : "Виконані та підтверджені"}</span>
+          <h3>Чистими по місяцях, {CUR[cur]}</h3>
+          <span className="chart-note">
+            {mode === "done" ? "Тільки виконані замовлення" : "Виконані та підтверджені"}
+            {expenses > 0 ? " · оборот у підказці стовпчика" : ""}
+          </span>
         </div>
-        <BarChart data={rev} color="var(--s2)" label="Дохід по місяцях" />
-        <div className="legend"><span><i style={{ background: "var(--s2)" }} />Дохід у {CUR[cur]}</span></div>
+        <BarChart data={rev} color="var(--s2)" label="Чистий дохід по місяцях" />
+        <div className="legend"><span><i style={{ background: "var(--s2)" }} />Чистими у {CUR[cur]}, після витрат</span></div>
       </div>
 
       <div className="panel">
