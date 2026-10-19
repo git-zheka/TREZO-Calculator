@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { Currency, Gear, Order, Role, Settings } from "@/lib/types";
+import type { Gear, Order, Role, Settings } from "@/lib/types";
 import type { MoneyMode } from "@/lib/calc";
-import { gearRevenue, inMode, monthlySeries, orderTotal, payback, roleStats } from "@/lib/calc";
-import { CUR, MONTHS, MONTHS_FULL, fmtDate, money, num, ordersWord, plural, trips } from "@/lib/format";
+import { gearRevenue, inMode, monthlyRange, orderDates, orderTotal, payback, roleStats } from "@/lib/calc";
+import { MONTHS, MONTHS_FULL, fmtDate, money, num, ordersWord, plural, trips } from "@/lib/format";
 import BarChart, { type Bar } from "./BarChart";
-import RateBlock from "./RateBlock";
 import MoneyModeSwitch from "./MoneyModeSwitch";
+import PeriodPicker, { type Period, presetRange } from "./PeriodPicker";
 
 const SERIES = ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)", "var(--s5)"];
 
@@ -30,33 +30,50 @@ export default function StatsView({
   onOpenRole: (id: string) => void;
   onNewRole: () => void;
 }) {
-  const [cur, setCur] = useState<Currency>("UAH");
-  const done = orders.filter((o) => inMode(o, mode));
-  const confirmed = orders.filter((o) => o.status === "confirmed").length;
+  const [period, setPeriod] = useState<Period>(() => ({ ...presetRange("all", orders), preset: "all" }));
+
+  /** Замовлення потрапляє в період, якщо хоч один його день усередині відрізка. */
+  const inPeriod = (o: Order) => orderDates(o).some((d) => d >= period.from && d <= period.to);
+  const scoped = orders.filter(inPeriod);
+
+  const done = scoped.filter((o) => inMode(o, mode));
+  const confirmed = scoped.filter((o) => o.status === "confirmed").length;
+
+  const head = (
+    <>
+      <div className="sec-head">
+        <div>
+          <h2 className="sec">Аналітика</h2>
+          <p className="sec-sub">
+            {mode === "done" ? "Тільки виконані замовлення." : "Виконані разом із підтвердженими."}{" "}
+            {period.preset === "all" ? "За весь час." : `З ${period.from} по ${period.to}.`}
+          </p>
+        </div>
+        <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <PeriodPicker period={period} orders={orders} onChange={setPeriod} />
+      </div>
+    </>
+  );
 
   if (!done.length) {
     return (
       <>
-        <div className="sec-head">
-          <div>
-            <h2 className="sec">Аналітика</h2>
-            <p className="sec-sub">Що рахувати грошима</p>
-          </div>
-          <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
-        </div>
+        {head}
         <div className="empty">
-          <h3>Поки нічого рахувати</h3>
+          <h3>За цей період нічого рахувати</h3>
           <p>
             {mode === "done" && confirmed > 0
               ? "Жодне замовлення ще не позначене «Виконано». Перемкни вгорі на «+ підтверджені» — і побачиш те, що вже законтрактовано."
-              : "Створи замовлення — і тут одразу буде сезонність, розподіл по замовниках і окупність."}
+              : "Вибери ширший період або створи замовлення — і тут зʼявиться сезонність, розподіл по замовниках і окупність."}
           </p>
         </div>
       </>
     );
   }
 
-  const m12 = monthlySeries(orders, 12, mode);
+  const m12 = monthlyRange(scoped, period.from, period.to, mode);
   const counts: Bar[] = m12.map((b) => ({
     label: b.label,
     value: b.count,
@@ -65,19 +82,18 @@ export default function StatsView({
     tipNote: b.cancelled ? `скасовано: ${b.cancelled}` : undefined,
   }));
   // Стовпчик — чисті; оборот лишається у підказці, щоб було з чим звірити.
-  const netKey = cur === "UAH" ? "netUAH" : "netUSD";
   const rev: Bar[] = m12.map((b) => ({
     label: b.label,
-    value: b[netKey],
-    tipValue: `${num(b[netKey])} ${CUR[cur]}`,
-    tipNote: b[cur] !== b[netKey] ? `оборот ${num(b[cur])}` : undefined,
+    value: b.netUAH,
+    tipValue: `${num(b.netUAH)} ₴`,
+    tipNote: b.UAH !== b.netUAH ? `оборот ${num(b.UAH)}` : undefined,
   }));
 
   const last3 = m12.slice(-3).reduce((s, b) => s + b.count, 0);
   const prev3 = m12.slice(-6, -3).reduce((s, b) => s + b.count, 0);
   const delta = prev3 ? Math.round(((last3 - prev3) / prev3) * 100) : null;
 
-  const curDone = done.filter((o) => o.currency === cur);
+  const curDone = done;
   const total = curDone.reduce((s, o) => s + orderTotal(o), 0);
   const expenses = curDone.reduce((s, o) => s + (Number(o.expenses) || 0), 0);
   const net = total - expenses;
@@ -87,45 +103,29 @@ export default function StatsView({
   const svcPart = total - gearPart;
 
   const byMonth: Bar[] = Array.from({ length: 12 }, (_, i) => ({ label: MONTHS[i], value: 0, tipTitle: MONTHS_FULL[i] }));
-  for (const o of orders) if (o.status !== "cancelled" && o.date) byMonth[new Date(o.date).getMonth()].value += 1;
+  for (const o of scoped) if (o.status !== "cancelled" && o.date) byMonth[new Date(o.date).getMonth()].value += 1;
   const peak = [...byMonth].sort((a, b) => b.value - a.value)[0];
   const low = byMonth.filter((b) => b.value > 0).sort((a, b) => a.value - b.value)[0];
 
-  const paybacks = gear.map((g) => ({ g, p: payback(orders, g, settings, mode, gear) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
+  const paybacks = gear.map((g) => ({ g, p: payback(scoped, g, settings, mode, gear) })).filter((x) => x.p.price > 0).sort((a, b) => a.p.pct - b.p.pct);
 
-  const rs = roleStats(orders, roles, mode)
-    .sort((a, b) => b.orders - a.orders || b.UAH + b.USD * 40 - (a.UAH + a.USD * 40));
+  const rs = roleStats(scoped, roles, mode)
+    .sort((a, b) => b.orders - a.orders || b.UAH - a.UAH);
   const roleOrders = rs.reduce((s, r) => s + r.orders, 0);
 
   return (
     <>
-      <div className="sec-head">
-        <div>
-          <h2 className="sec">Аналітика</h2>
-          <p className="sec-sub">
-            Гривня і долар рахуються окремо — без конвертації.{" "}
-            {mode === "done" ? "Тільки виконані замовлення." : "Виконані разом із підтвердженими."}
-          </p>
-        </div>
-        <MoneyModeSwitch mode={mode} onChange={onMode} confirmed={confirmed} />
-      </div>
+      {head}
 
-      <div className="sec-head" style={{ marginTop: -6 }}>
-        <div />
-        <div className="seg">
-          <button aria-pressed={cur === "UAH"} onClick={() => setCur("UAH")}>₴ Гривня</button>
-          <button aria-pressed={cur === "USD"} onClick={() => setCur("USD")}>$ Долар</button>
-        </div>
-      </div>
 
       <div className="tiles">
         <div className="tile">
-          <div className="k">Чистими, {CUR[cur]}</div>
+          <div className="k">Чистими, ₴</div>
           <div className="v num">
             {num(net)}
             {expenses > 0 && <span className="gross">оборот {num(total)}</span>}
           </div>
-          <div className="d">{expenses ? `витрат ${num(expenses)} ${CUR[cur]} — дорога, помічники` : "витрат не вписано"}</div>
+          <div className="d">{expenses ? `витрат ${num(expenses)} ₴ — дорога, помічники` : "витрат не вписано"}</div>
         </div>
         <div className="tile">
           <div className="k">Середній чек</div>
@@ -133,17 +133,17 @@ export default function StatsView({
             {num(avgNet)}
             {expenses > 0 && <span className="gross">оборот {num(avg)}</span>}
           </div>
-          <div className="d">{ordersWord(curDone.length)} у {CUR[cur]}</div>
+          <div className="d">{ordersWord(curDone.length)} за весь період</div>
         </div>
         <div className="tile">
           <div className="k">З оренди техніки</div>
           <div className="v num">{total ? Math.round((gearPart / total) * 100) : 0}<small>%</small></div>
-          <div className="d">{num(gearPart)} {CUR[cur]} з обороту {num(total)}</div>
+          <div className="d">{num(gearPart)} ₴ з обороту {num(total)}</div>
         </div>
         <div className="tile">
           <div className="k">З власної роботи</div>
           <div className="v num">{total ? Math.round((svcPart / total) * 100) : 0}<small>%</small></div>
-          <div className="d">{num(svcPart)} {CUR[cur]} з обороту — виступи, монтаж</div>
+          <div className="d">{num(svcPart)} ₴ з обороту — виступи, монтаж</div>
         </div>
       </div>
 
@@ -162,14 +162,14 @@ export default function StatsView({
 
       <div className="panel">
         <div className="chart-head">
-          <h3>Чистими по місяцях, {CUR[cur]}</h3>
+          <h3>Чистими по місяцях, ₴</h3>
           <span className="chart-note">
             {mode === "done" ? "Тільки виконані замовлення" : "Виконані та підтверджені"}
             {expenses > 0 ? " · оборот у підказці стовпчика" : ""}
           </span>
         </div>
         <BarChart data={rev} color="var(--s2)" label="Чистий дохід по місяцях" />
-        <div className="legend"><span><i style={{ background: "var(--s2)" }} />Чистими у {CUR[cur]}, після витрат</span></div>
+        <div className="legend"><span><i style={{ background: "var(--s2)" }} />Чистими, після витрат</span></div>
       </div>
 
       <div className="panel">
@@ -191,7 +191,6 @@ export default function StatsView({
                   <th style={{ width: 170 }}>Частка виїздів</th>
                   <th className="n">Замовлень</th>
                   <th className="n">Гонорар ₴</th>
-                  <th className="n">Гонорар $</th>
                   <th className="n">Востаннє</th>
                 </tr>
               </thead>
@@ -216,7 +215,6 @@ export default function StatsView({
                       </td>
                       <td className="n">{r.orders || "—"}</td>
                       <td className="n">{r.UAH ? num(r.UAH) : "—"}</td>
-                      <td className="n">{r.USD ? num(r.USD) : "—"}</td>
                       <td className="n">{r.last ? fmtDate(r.last) : "—"}</td>
                     </tr>
                   );
@@ -233,7 +231,7 @@ export default function StatsView({
 
       <div className="panel">
         <div className="chart-head">
-          <h3>Сезонність — усі роки разом</h3>
+          <h3>Сезонність</h3>
           <span className="chart-note">
             {peak.value ? (
               <>Пік — <b>{peak.tipTitle}</b>{low && low.label !== peak.label ? <>, найтихіше — <b>{low.tipTitle}</b></> : null}</>
@@ -241,7 +239,7 @@ export default function StatsView({
           </span>
         </div>
         <BarChart data={byMonth} color="var(--s3)" height={160} label="Сезонність по місяцях" />
-        <div className="legend"><span><i style={{ background: "var(--s3)" }} />Замовлень за місяць, усі роки</span></div>
+        <div className="legend"><span><i style={{ background: "var(--s3)" }} />Замовлень за кожен місяць у вибраному періоді</span></div>
       </div>
 
       {paybacks.length > 0 && (
@@ -287,13 +285,12 @@ export default function StatsView({
               </tbody>
             </table>
           </div>
-          <RateBlock settings={settings} />
         </div>
       )}
       <p className="hint">
-        Усього замовлень у базі: {orders.length}, з них {mode === "done" ? "виконаних" : "виконаних і підтверджених"} {done.length}
-        {orders.filter((o) => o.status === "cancelled").length
-          ? `, скасованих ${orders.filter((o) => o.status === "cancelled").length}`
+        Замовлень у вибраному періоді: {scoped.length}, з них {mode === "done" ? "виконаних" : "виконаних і підтверджених"} {done.length}
+        {scoped.filter((o) => o.status === "cancelled").length
+          ? `, скасованих ${scoped.filter((o) => o.status === "cancelled").length}`
           : ""}
         . {plural(gear.length, "Одиниця", "Одиниці", "Одиниць")} техніки: {gear.length}.
       </p>

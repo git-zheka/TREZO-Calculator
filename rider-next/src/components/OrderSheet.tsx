@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Client, Currency, Gear, Order, OrderItem, Role } from "@/lib/types";
+import type { Client, Gear, Order, OrderItem, Role } from "@/lib/types";
 import { KIND_LABEL, STATUS_LABEL, isBillable, normalizeCategory } from "@/lib/types";
 import { lineTotal, orderDates, orderTotal, withDates } from "@/lib/calc";
-import { CUR, addDays, daysBetween, daysWord, fmtDate, nextDay, num } from "@/lib/format";
+import { addDays, daysBetween, daysWord, fmtDate, nextDay, num } from "@/lib/format";
 import NumberField from "./NumberField";
 
-const defaultRate = (g: Gear, cur: Currency) => Number(cur === "USD" ? g.rateUsd : g.rateUah) || 0;
+const defaultRate = (g: Gear) => Number(g.rateUah) || 0;
+const roleRate = (r: Role) => Number(r.rateUah) || 0;
 
 export default function OrderSheet({
   draft,
@@ -32,7 +33,10 @@ export default function OrderSheet({
   onSave: (o: Order) => void;
   onDelete: (id: string) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
+  const dates = orderDates(draft);
+  // Багатоденне замовлення — рідший випадок, тож поля для нього сховані за галочкою.
+  const [multi, setMulti] = useState(dates.length > 1);
+  const [allClients, setAllClients] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -41,9 +45,6 @@ export default function OrderSheet({
   }, [onClose]);
 
   const set = <K extends keyof Order>(k: K, v: Order[K]) => onChange({ ...draft, [k]: v });
-
-  const dates = orderDates(draft);
-  const extra = dates.length > 1;
 
   /**
    * Зміна набору днів переставляє «Днів» у позиціях техніки: взяв екран ще на добу —
@@ -74,30 +75,23 @@ export default function OrderSheet({
     setDates(list);
   };
 
-  /** Постійні першими, решта за абеткою. Список короткий — тож чіпи, а не datalist:
-   *  datalist на мобільних браузерах або не відкривається, або ховається за клавіатурою. */
-  const pickable = [...clients].sort(
-    (a, b) => Number(b.regular) - Number(a.regular) || a.name.localeCompare(b.name, "uk"),
-  );
+  const toggleMulti = (on: boolean) => {
+    setMulti(on);
+    if (!on && dates.length > 1) setDates([dates[0]]);
+  };
+
+  /**
+   * Типово показуємо лише постійних: саме їх обираєш щодня, і їх небагато.
+   * Решта — за кнопкою або просто вписується руками в поле.
+   */
+  const regulars = clients.filter((c) => c.regular);
+  const pickable = (allClients ? [...clients] : regulars)
+    .sort((a, b) => Number(b.regular) - Number(a.regular) || a.name.localeCompare(b.name, "uk"));
 
   /** Набране руками ім'я, що збігається із заведеним, чіпляється до тієї ж картки —
    *  інакше в аналітиці зʼявився б другий рядок із тим самим замовником. */
   const pickId = (name: string) =>
     clients.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase())?.id ?? null;
-
-  const setCurrency = (cur: Currency) => {
-    // Зміна валюти переставляє дефолтні ставки — індивідуальні ціни довелося б
-    // переводити за курсом, а курс тут не наше діло.
-    const items = draft.items.map((it) => {
-      if (it.type === "gear") {
-        const g = gear.find((x) => x.id === it.equipmentId);
-        return g ? { ...it, price: defaultRate(g, cur) } : it;
-      }
-      const r = it.roleId ? roles.find((x) => x.id === it.roleId) : null;
-      return r ? { ...it, price: Number(cur === "USD" ? r.rateUsd : r.rateUah) || 0 } : it;
-    });
-    onChange({ ...draft, currency: cur, items });
-  };
 
   const lineFor = (g: Gear, via: string | null, qty = 1) => ({
     type: "gear" as const,
@@ -105,32 +99,31 @@ export default function OrderSheet({
     name: g.name,
     qty,
     days: dates.length,
-    price: defaultRate(g, draft.currency),
+    price: defaultRate(g),
     // Копія на момент замовлення: якщо комплект колись зміниться, старі замовлення лишаться як були.
     parts: (g.parts ?? []).filter((x) => x.name.trim()).map((x) => ({ name: x.name, qty: x.qty })),
     via,
   });
 
+  /** Знімає позицію разом із її комутацією — крім тієї, що потрібна іншій позиції. */
+  const removeGear = (gearId: string) => {
+    const staying = draft.items.filter((it) => it.equipmentId !== gearId && !it.via);
+    const stillNeeded = new Set(
+      staying.flatMap((it) => {
+        const owner = gear.find((x) => x.id === it.equipmentId);
+        return (owner?.needs ?? []).map((n) => n.gearId);
+      }),
+    );
+    onChange({
+      ...draft,
+      items: draft.items.filter(
+        (it) => it.equipmentId !== gearId && (!it.via || it.via !== gearId || stillNeeded.has(it.equipmentId ?? "")),
+      ),
+    });
+  };
+
   const toggleGear = (g: Gear) => {
-    const has = draft.items.some((it) => it.equipmentId === g.id);
-    if (has) {
-      // Знімаємо позицію разом із її комутацією — але тільки тією,
-      // якої не потребує жодна інша позиція, що лишається в замовленні.
-      const staying = draft.items.filter((it) => it.equipmentId !== g.id && !it.via);
-      const stillNeeded = new Set(
-        staying.flatMap((it) => {
-          const owner = gear.find((x) => x.id === it.equipmentId);
-          return (owner?.needs ?? []).map((n) => n.gearId);
-        }),
-      );
-      onChange({
-        ...draft,
-        items: draft.items.filter(
-          (it) => it.equipmentId !== g.id && (!it.via || it.via !== g.id || stillNeeded.has(it.equipmentId ?? "")),
-        ),
-      });
-      return;
-    }
+    if (draft.items.some((it) => it.equipmentId === g.id)) return removeGear(g.id);
     const items = [...draft.items, lineFor(g, null)];
     for (const n of g.needs ?? []) {
       if (items.some((it) => it.equipmentId === n.gearId)) continue;
@@ -140,16 +133,8 @@ export default function OrderSheet({
     onChange({ ...draft, items });
   };
 
-  /**
-   * Комутація і стійки в списку вибору не показуються: вони підставляються самі
-   * до позиції, з якою повʼязані. Кнопка відкриває їх, коли кабель треба дати
-   * окремо — без прив'язки до чогось.
-   */
-  const live = gear.filter((g) => g.status !== "sold");
-  const pickableGear = live.filter((g) => showAll || isBillable(normalizeCategory(g.category)));
-  const hiddenCount = live.length - live.filter((g) => isBillable(normalizeCategory(g.category))).length;
-
-  const roleRate = (r: Role, cur: Currency) => Number(cur === "USD" ? r.rateUsd : r.rateUah) || 0;
+  /** У виборі лише основна техніка. Комутація і стійки їдуть автоматично за звʼязком. */
+  const pickableGear = gear.filter((g) => g.status !== "sold" && isBillable(normalizeCategory(g.category)));
 
   /** Роль — перемикач: другий тап знімає її з замовлення. */
   const toggleRole = (r: Role) => {
@@ -158,21 +143,33 @@ export default function OrderSheet({
       ...draft,
       items: has
         ? draft.items.filter((it) => it.roleId !== r.id)
-        : [...draft.items, { type: "service" as const, roleId: r.id, name: r.name, qty: 1, price: roleRate(r, draft.currency) }],
+        : [...draft.items, { type: "service" as const, roleId: r.id, name: r.name, qty: 1, price: roleRate(r) }],
     });
   };
 
   const addService = (name: string) =>
     onChange({ ...draft, items: [...draft.items, { type: "service", roleId: null, name, qty: 1, price: 0 }] });
 
-  const patchItem = (i: number, patch: Partial<OrderItem>) => {
-    const items = draft.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
-    onChange({ ...draft, items });
+  const patchItem = (i: number, patch: Partial<OrderItem>) =>
+    onChange({ ...draft, items: draft.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)) });
+
+  const dropItem = (i: number) => {
+    const it = draft.items[i];
+    if (it?.type === "gear" && it.equipmentId && !it.via) return removeGear(it.equipmentId);
+    onChange({ ...draft, items: draft.items.filter((_, idx) => idx !== i) });
   };
 
-  const dropItem = (i: number) => onChange({ ...draft, items: draft.items.filter((_, idx) => idx !== i) });
+  /**
+   * Комутація окремими рядками не показується — вона згортається в підпис
+   * під своєю позицією. У даних лишається: саме за нею працює перевірка,
+   * чи не обіцяно той самий кабель двічі на одну дату.
+   */
+  const rows = draft.items.map((it, i) => ({ it, i })).filter(({ it }) => !it.via);
+  const viaOf = (gearId?: string | null) =>
+    draft.items.filter((x) => x.via && x.via === gearId);
 
   const total = orderTotal(draft);
+  const multiDay = dates.length > 1;
 
   return (
     <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -186,15 +183,43 @@ export default function OrderSheet({
         </header>
 
         <div className="body">
+          <div>
+            <div className="eyebrow" style={{ marginBottom: 7 }}>Статус</div>
+            <div className="seg wide">
+              {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                <button
+                  key={k}
+                  aria-pressed={draft.status === k}
+                  onClick={() => set("status", k as Order["status"])}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="check">
+            <input type="checkbox" checked={multi} onChange={(e) => toggleMulti(e.target.checked)} />
+            <span>Замовлення на кілька днів</span>
+          </label>
+
           <div className="fgrid">
             <label className="f">
-              <span>Дата</span>
+              <span>{multi ? "Від" : "Дата"}</span>
               <input className="i" type="date" value={dates[0] ?? ""} onChange={(e) => setStart(e.target.value)} />
             </label>
-            <label className="f">
-              <span>По (якщо кілька днів)</span>
-              <input className="i" type="date" min={dates[0] || undefined} value={dates.length > 1 ? dates[dates.length - 1] : ""} onChange={(e) => setEnd(e.target.value)} />
-            </label>
+            {multi && (
+              <label className="f">
+                <span>По</span>
+                <input
+                  className="i"
+                  type="date"
+                  min={dates[0] || undefined}
+                  value={multiDay ? dates[dates.length - 1] : ""}
+                  onChange={(e) => setEnd(e.target.value)}
+                />
+              </label>
+            )}
             <label className="f">
               <span>Замовник</span>
               <input
@@ -204,13 +229,35 @@ export default function OrderSheet({
                 onChange={(e) => onChange({ ...draft, clientName: e.target.value, clientId: pickId(e.target.value) })}
               />
             </label>
-            <label className="f">
-              <span>Статус</span>
-              <select className="i" value={draft.status} onChange={(e) => set("status", e.target.value as Order["status"])}>
-                {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </label>
           </div>
+
+          {multi && (
+            <>
+              {multiDay && (
+                <div className="datechips">
+                  {dates.map((d) => (
+                    <span key={d} className="datechip">
+                      {fmtDate(d)}
+                      <button aria-label={`Прибрати ${fmtDate(d)}`} onClick={() => setDates(dates.filter((x) => x !== d))}>✕</button>
+                    </span>
+                  ))}
+                  <span className="hint">{daysWord(dates.length)} · техніка зайнята на кожен із них</span>
+                </div>
+              )}
+              <label className="f">
+                <span>Додати окремий день</span>
+                <input
+                  className="i"
+                  type="date"
+                  value=""
+                  onChange={(e) => { if (e.target.value) setDates([...dates, e.target.value]); }}
+                />
+                <em className="hint" style={{ fontStyle: "normal" }}>
+                  Для дат не поспіль: вихідні через тиждень, два різні заходи в одного замовника.
+                </em>
+              </label>
+            </>
+          )}
 
           {pickable.length > 0 && (
             <div className="chips">
@@ -225,40 +272,17 @@ export default function OrderSheet({
                       ? { ...draft, clientName: "", clientId: null }
                       : { ...draft, clientName: c.name, clientId: c.id })}
                   >
-                    {c.regular && <span className="mono" style={{ fontSize: 11, opacity: .7 }}>★</span>}
                     {c.name}
                   </button>
                 );
               })}
+              {clients.length > regulars.length && (
+                <button className="chip ghost" onClick={() => setAllClients(!allClients)}>
+                  {allClients ? "тільки постійні" : `усі замовники (${clients.length})`}
+                </button>
+              )}
             </div>
           )}
-
-          {(dates.length > 1 || extra) && (
-            <div className="datechips">
-              {dates.map((d) => (
-                <span key={d} className="datechip">
-                  {fmtDate(d)}
-                  {dates.length > 1 && (
-                    <button aria-label={`Прибрати ${fmtDate(d)}`} onClick={() => setDates(dates.filter((x) => x !== d))}>✕</button>
-                  )}
-                </span>
-              ))}
-              <span className="hint">{daysWord(dates.length)} · техніка зайнята на кожен із них</span>
-            </div>
-          )}
-
-          <label className="f">
-            <span>Додати окремий день</span>
-            <input
-              className="i"
-              type="date"
-              value=""
-              onChange={(e) => { if (e.target.value) setDates([...dates, e.target.value]); }}
-            />
-            <em className="hint" style={{ fontStyle: "normal" }}>
-              Для дат не поспіль: вихідні через тиждень, два різні заходи в одного замовника.
-            </em>
-          </label>
 
           <label className="f">
             <span>Що робимо</span>
@@ -273,27 +297,13 @@ export default function OrderSheet({
               </select>
             </label>
             <label className="f">
-              <span>Валюта</span>
-              <select className="i" value={draft.currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-                <option value="UAH">₴ Гривня</option>
-                <option value="USD">$ Долар</option>
-              </select>
-            </label>
-            <label className="f">
               <span>Витрати (дорога, помічник)</span>
               <NumberField className="i" value={draft.expenses} onChange={(n) => set("expenses", n)} />
             </label>
           </div>
 
           <div>
-            <div className="eyebrow" style={{ marginBottom: 7 }}>
-              Обладнання
-              {hiddenCount > 0 && (
-                <button className="linkbtn" onClick={() => setShowAll(!showAll)}>
-                  {showAll ? "сховати комутацію" : `показати комутацію (${hiddenCount})`}
-                </button>
-              )}
-            </div>
+            <div className="eyebrow" style={{ marginBottom: 7 }}>Обладнання</div>
             <div className="chips">
               {pickableGear.length === 0 && (
                 <span className="hint">Карток ще немає — додай їх у вкладці «Обладнання».</span>
@@ -309,7 +319,7 @@ export default function OrderSheet({
                   {(Number(g.qty) || 1) > 1 && (
                     <span className="mono" style={{ fontSize: 11, opacity: .55 }}>×{g.qty}</span>
                   )}
-                  <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(defaultRate(g, draft.currency))}</span>
+                  <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(defaultRate(g))}</span>
                 </button>
               ))}
             </div>
@@ -326,8 +336,8 @@ export default function OrderSheet({
                   onClick={() => toggleRole(r)}
                 >
                   {r.name}
-                  {roleRate(r, draft.currency) > 0 && (
-                    <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(roleRate(r, draft.currency))}</span>
+                  {roleRate(r) > 0 && (
+                    <span className="mono" style={{ fontSize: 11, opacity: .7 }}>{num(roleRate(r))}</span>
                   )}
                 </button>
               ))}
@@ -343,28 +353,33 @@ export default function OrderSheet({
           <div>
             <div className="eyebrow" style={{ marginBottom: 7 }}>Позиції замовлення</div>
             <div className="lines">
-              {draft.items.length > 0 && (
-                <div className={`line lines-head${extra ? " withdays" : ""}`}>
+              {rows.length > 0 && (
+                <div className={`line lines-head${multiDay ? " withdays" : ""}`}>
                   <div>Позиція</div>
                   <div>К-сть</div>
-                  {extra && <div>Днів</div>}
-                  <div>Ціна/день</div>
+                  {multiDay && <div>Днів</div>}
+                  <div>{multiDay ? "Ціна/день" : "Ціна за 1"}</div>
                   <div>Сума</div>
                   <div />
                 </div>
               )}
-              {draft.items.length === 0 && (
+              {rows.length === 0 && (
                 <div className="empty-lines">Обери обладнання вище — позиції зʼявляться тут з дефолтною ціною, яку можна змінити.</div>
               )}
-              {draft.items.map((it, i) => {
+              {rows.map(({ it, i }) => {
                 const g = it.type === "gear" ? gear.find((x) => x.id === it.equipmentId) : undefined;
-                const def = g ? defaultRate(g, draft.currency) : null;
+                const def = g ? defaultRate(g) : null;
                 const custom = def != null && def > 0 && Number(it.price) !== def;
                 const owned = g ? Number(g.qty) || 1 : null;
                 // Попереджаємо, але не блокуємо: одиницю можна дібрати в колеги.
                 const over = owned != null && Number(it.qty) > owned;
+                const rides = viaOf(it.equipmentId);
+                const extras = [
+                  ...(it.parts ?? []).map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)),
+                  ...rides.map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)),
+                ];
                 return (
-                  <div className={`line${over ? " over" : ""}${extra ? " withdays" : ""}`} key={`${it.equipmentId ?? it.name}-${i}`}>
+                  <div className={`line${over ? " over" : ""}${multiDay ? " withdays" : ""}`} key={`${it.equipmentId ?? it.name}-${i}`}>
                     <div className="ln">
                       {it.name}
                       <em className={over ? "warn" : undefined}>
@@ -372,13 +387,11 @@ export default function OrderSheet({
                           ? "послуга"
                           : over
                             ? `у тебе лише ${owned} шт`
-                            : it.via
-                              ? `комутація до «${gear.find((x) => x.id === it.via)?.name ?? "…"}» · ${owned} шт у парку`
-                              : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
+                            : `${owned} шт у парку · ${custom ? `своя ціна, дефолт ${num(def!)}` : def ? "дефолтна ціна" : "ціна не задана"}`}
                       </em>
                     </div>
                     <NumberField value={it.qty} ariaLabel="Кількість" placeholder="1" onChange={(n) => patchItem(i, { qty: n })} />
-                    {extra && (
+                    {multiDay && (
                       <NumberField
                         value={Number(it.days) || 1}
                         placeholder="1"
@@ -386,23 +399,19 @@ export default function OrderSheet({
                         onChange={(n) => patchItem(i, { days: n || 1 })}
                       />
                     )}
-                    <NumberField value={it.price} ariaLabel="Ціна за день" onChange={(n) => patchItem(i, { price: n })} />
+                    <NumberField value={it.price} ariaLabel={multiDay ? "Ціна за день" : "Ціна за одиницю"} onChange={(n) => patchItem(i, { price: n })} />
                     <div className="amt">{num(lineTotal(it))}</div>
                     <button className="x" aria-label="Прибрати позицію" onClick={() => dropItem(i)}>✕</button>
-                    {it.parts && it.parts.length > 0 && (
-                      <div className="parts-note">
-                        у комплекті: {it.parts.map((x) => (x.qty > 1 ? `${x.name} ×${x.qty}` : x.name)).join(", ")}
-                      </div>
-                    )}
+                    {extras.length > 0 && <div className="parts-note">їде з нею: {extras.join(", ")}</div>}
                   </div>
                 );
               })}
               <div className="totrow">
                 <span className="hint">
-                  Разом{draft.expenses ? ` · чистими ${num(total - draft.expenses)} ${CUR[draft.currency]}` : ""}
-                  {extra ? ` · техніка рахується за ${daysWord(dates.length)}, власна робота — за один` : ""}
+                  Разом{draft.expenses ? ` · чистими ${num(total - draft.expenses)} ₴` : ""}
+                  {multiDay ? ` · техніка рахується за ${daysWord(dates.length)}, власна робота — за один` : ""}
                 </span>
-                <span className="tv num">{num(total)} {CUR[draft.currency]}</span>
+                <span className="tv num">{num(total)} ₴</span>
               </div>
             </div>
           </div>
@@ -417,7 +426,7 @@ export default function OrderSheet({
           <span className="hint">Окупність рахується лише зі статусу «Виконано»</span>
           <div className="rowflex">
             <button className="btn ghost" onClick={onClose}>Скасувати</button>
-            <button className="btn primary" disabled={pending} onClick={() => onSave(draft)}>
+            <button className="btn primary" disabled={pending} onClick={() => onSave({ ...draft, currency: "UAH" })}>
               {pending ? "Зберігаю…" : "Зберегти"}
             </button>
           </div>

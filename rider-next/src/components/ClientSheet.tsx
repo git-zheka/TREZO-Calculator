@@ -118,16 +118,14 @@ export default function ClientSheet({
                   <div className="grow" style={{ marginTop: 10 }}>
                     <span>Чистими</span>
                     <b>
-                      {[mine.netUAH ? money(mine.netUAH, "UAH") : null, mine.netUSD ? money(mine.netUSD, "USD") : null]
-                        .filter(Boolean).join(" · ") || "—"}
+                      {mine.netUAH ? money(mine.netUAH, "UAH") : "—"}
                     </b>
                   </div>
-                  {(mine.UAH !== mine.netUAH || mine.USD !== mine.netUSD) && (
+                  {mine.UAH !== mine.netUAH && (
                     <div className="grow">
                       <span>Оборот</span>
                       <b>
-                        {[mine.UAH ? money(mine.UAH, "UAH") : null, mine.USD ? money(mine.USD, "USD") : null]
-                          .filter(Boolean).join(" · ") || "—"}
+                        {money(mine.UAH, "UAH")}
                       </b>
                     </div>
                   )}

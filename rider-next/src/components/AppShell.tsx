@@ -10,16 +10,18 @@ import CalendarView from "./CalendarView";
 import GearView from "./GearView";
 import ClientsView from "./ClientsView";
 import StatsView from "./StatsView";
+import DatesView from "./DatesView";
 import OrderSheet from "./OrderSheet";
 import GearSheet from "./GearSheet";
 import ClientSheet from "./ClientSheet";
 import RoleSheet from "./RoleSheet";
 
-export type View = "orders" | "calendar" | "gear" | "clients" | "stats";
+export type View = "orders" | "calendar" | "dates" | "gear" | "clients" | "stats";
 
 const TABS: { id: View; label: string }[] = [
   { id: "orders", label: "Замовлення" },
   { id: "calendar", label: "Календар" },
+  { id: "dates", label: "Дати" },
   { id: "gear", label: "Обладнання" },
   { id: "clients", label: "Замовники" },
   { id: "stats", label: "Аналітика" },
@@ -100,6 +102,13 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
   const dropClient = (id: string) => start(async () => { await removeClient(id); setClientDraft(null); });
 
   const openOrder = (id: string) => setOrderDraft(structuredClone(orders.find((o) => o.id === id) ?? emptyOrder()));
+
+  /** Статус зі списку: міняється без відкривання картки — найчастіша дія після виїзду. */
+  const setStatus = (id: string, status: Order["status"]) => {
+    const o = orders.find((x) => x.id === id);
+    if (!o || o.status === status) return;
+    start(async () => { await saveOrder({ ...o, status }); });
+  };
   const openGear = (id: string) => setGearDraft(structuredClone(gear.find((g) => g.id === id) ?? emptyGear()));
   const openClient = (id: string) => setClientDraft(structuredClone(clients.find((c) => c.id === id) ?? emptyClient()));
 
@@ -125,7 +134,14 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
       </header>
 
       <main>
-        {view === "orders" && <OrdersView orders={orders} onOpen={openOrder} onNew={() => setOrderDraft(emptyOrder())} />}
+        {view === "orders" && (
+          <OrdersView
+            orders={orders}
+            onOpen={openOrder}
+            onNew={() => setOrderDraft(emptyOrder())}
+            onStatus={setStatus}
+          />
+        )}
         {view === "calendar" && (
           <CalendarView
             orders={orders}
@@ -135,6 +151,7 @@ export default function AppShell({ snapshot, storage }: { snapshot: Snapshot; st
             onNewOn={(date) => setOrderDraft(emptyOrder(date))}
           />
         )}
+        {view === "dates" && <DatesView orders={orders} onOpen={openOrder} />}
         {view === "gear" && (
           <GearView
             orders={orders}

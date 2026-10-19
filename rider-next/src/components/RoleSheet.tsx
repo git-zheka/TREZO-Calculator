@@ -63,16 +63,10 @@ export default function RoleSheet({
             />
           </label>
 
-          <div className="fgrid">
-            <label className="f">
-              <span>Дефолтний гонорар, ₴</span>
-              <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
-            </label>
-            <label className="f">
-              <span>Дефолтний гонорар, $</span>
-              <NumberField className="i" value={draft.rateUsd} onChange={(n) => set("rateUsd", n)} />
-            </label>
-          </div>
+          <label className="f">
+            <span>Дефолтний гонорар, ₴</span>
+            <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
+          </label>
           <p className="hint">
             Підставляється, коли додаєш роль у замовлення. Там суму завжди можна перебити —
             минулі замовлення від зміни ставки не перераховуються.
@@ -84,8 +78,7 @@ export default function RoleSheet({
               <div className="grow">
                 <span>Зароблено</span>
                 <b>
-                  {[mine.UAH ? money(mine.UAH, "UAH") : null, mine.USD ? money(mine.USD, "USD") : null]
-                    .filter(Boolean).join(" · ") || "—"}
+                  {mine.UAH ? money(mine.UAH, "UAH") : "—"}
                 </b>
               </div>
               <div className="grow"><span>Востаннє</span><b>{fmtDate(mine.last)}</b></div>

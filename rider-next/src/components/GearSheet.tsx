@@ -98,13 +98,6 @@ export default function GearSheet({
               <NumberField className="i" value={draft.purchasePrice} onChange={(n) => set("purchasePrice", n)} />
             </label>
             <label className="f">
-              <span>Валюта покупки</span>
-              <select className="i" value={draft.purchaseCurrency} onChange={(e) => set("purchaseCurrency", e.target.value as Gear["purchaseCurrency"])}>
-                <option value="UAH">₴ Гривня</option>
-                <option value="USD">$ Долар</option>
-              </select>
-            </label>
-            <label className="f">
               <span>Стан</span>
               <select className="i" value={draft.status} onChange={(e) => set("status", e.target.value as Gear["status"])}>
                 {Object.entries(GEAR_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -114,16 +107,10 @@ export default function GearSheet({
 
           {billable ? (
             <>
-              <div className="fgrid">
-                <label className="f">
-                  <span>Дефолтна ціна оренди, ₴</span>
-                  <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
-                </label>
-                <label className="f">
-                  <span>Дефолтна ціна оренди, $</span>
-                  <NumberField className="i" value={draft.rateUsd} onChange={(n) => set("rateUsd", n)} />
-                </label>
-              </div>
+              <label className="f">
+                <span>Дефолтна ціна оренди, ₴</span>
+                <NumberField className="i" value={draft.rateUah} onChange={(n) => set("rateUah", n)} />
+              </label>
               <p className="hint">
                 Ці ціни підставляються автоматично, коли додаєш картку в замовлення — у самому замовленні їх завжди можна перебити індивідуальною.
               </p>

@@ -7,7 +7,6 @@ import type { MoneyMode } from "@/lib/calc";
 import { payback } from "@/lib/calc";
 import { money, num, plural, trips } from "@/lib/format";
 import { reorderGear } from "@/app/actions";
-import RateBlock from "./RateBlock";
 import MoneyModeSwitch from "./MoneyModeSwitch";
 
 const investedIn = (g: Gear) =>
@@ -105,14 +104,7 @@ export default function GearView({
           <div className="v num">{num(invested.UAH)} <small>₴</small></div>
           <div className="d">разом із комутацією</div>
         </div>
-        <div className="tile">
-          <div className="k">Вкладено, $</div>
-          <div className="v num">{num(invested.USD)} <small>$</small></div>
-          <div className="d">разом із комутацією</div>
-        </div>
       </div>
-
-      <RateBlock settings={settings} />
 
       <div className="sec-head">
         <div>

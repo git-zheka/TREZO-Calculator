@@ -148,9 +148,24 @@ h2.sec { font-family: var(--font-display); font-weight: 600; font-size: 15px; le
 
 /* orders */
 .olist { display: flex; flex-direction: column; }
-.orow { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 13px 16px; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; background: transparent; text-align: left; width: 100%; color: inherit; }
+/* Рядок замовлення: ліва частина відкриває картку, права лишається клікабельною окремо */
+.orow { display: flex; align-items: center; gap: 12px; padding: 0 16px 0 0; border-bottom: 1px solid var(--line); }
 .orow:last-child { border-bottom: 0; }
 .orow:hover { background: var(--surface-2); }
+.orow-main { flex: 1; min-width: 0; display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; padding: 13px 0 13px 16px; border: 0; cursor: pointer; background: transparent; text-align: left; color: inherit; }
+.orow-side { display: flex; align-items: center; gap: 12px; flex: none; }
+
+/* Статус як пілюля, що одразу і є селектом */
+.statsel { appearance: none; -webkit-appearance: none; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink-2); border-radius: 99px; padding: 4px 24px 4px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer; line-height: 1.3;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat; }
+.statsel.s-done { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); background-color: color-mix(in srgb, var(--good) 10%, transparent); }
+.statsel.s-confirmed { color: var(--s1); border-color: color-mix(in srgb, var(--s1) 45%, transparent); background-color: color-mix(in srgb, var(--s1) 10%, transparent); }
+.statsel.s-lead { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background-color: color-mix(in srgb, var(--warn) 12%, transparent); }
+.statsel.s-cancelled { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 40%, transparent); background-color: color-mix(in srgb, var(--crit) 8%, transparent); }
+/* Дата минула, а статус досі «Підтверджено» — підказка, що саме треба змінити */
+.statsel.stale { box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent); }
+.statsel option { color: var(--ink); background: var(--surface); }
 .odate { font-family: var(--font-mono); font-size: 12px; color: var(--ink-2); line-height: 1.3; }
 .odate b { display: block; font-size: 17px; color: var(--ink); font-weight: 600; }
 .otitle { font-weight: 600; font-size: 14.5px; }
@@ -238,6 +253,9 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 .seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
 .seg button { border: 0; background: transparent; padding: 5px 11px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-2); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+/* Статус у картці: чотири кнопки на всю ширину замість випадного списку */
+.seg.wide { display: flex; width: 100%; }
+.seg.wide button { flex: 1; text-align: center; padding: 8px 6px; }
 
 /* modal */
 .scrim { position: fixed; inset: 0; background: rgba(10, 12, 11, .45); z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; overflow-y: auto; }
@@ -258,6 +276,24 @@ textarea.i { resize: vertical; min-height: 56px; }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip[data-on="1"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .chip.svc { border-style: dashed; }
+.chip.ghost { border-style: dashed; border-color: var(--line); color: var(--muted); }
+
+/* Галочка-рядок: ціль під палець, а не системний квадратик 13×13 */
+.check { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: none; }
+
+/* Текст, готовий до копіювання: моноширинний, з переносами, виділяється повністю */
+.copytext { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 0; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); user-select: all; }
+
+.daylist { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.dayrow { display: flex; align-items: center; gap: 12px; padding: 9px 13px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; text-align: left; font-size: 13.5px; width: 100%; }
+.dayrow:last-child { border-bottom: 0; }
+.dayrow:hover { background: var(--surface-2); }
+.dayrow b { font-family: var(--font-mono); font-size: 15px; min-width: 24px; }
+.dayrow em { font-style: normal; margin-left: auto; }
+
+.dateinput { width: auto; min-width: 140px; padding: 5px 9px; font-size: 13px; }
+.check:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 .lines { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .line { display: grid; grid-template-columns: 1fr 68px 96px 84px 30px; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
@@ -331,11 +367,14 @@ textarea.i { resize: vertical; min-height: 56px; }
 
 @media (max-width: 640px) {
   .top-in { padding: 10px 14px; gap: 10px; }
-  .tabs { order: 3; width: 100%; margin-left: 0; }
-  .tab { flex: 1; text-align: center; }
+  .tabs { order: 3; width: 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; white-space: nowrap; padding: 7px 10px; }
   main { padding: 16px 14px 80px; }
-  .orow { grid-template-columns: 54px 1fr; row-gap: 6px; }
-  .osum { grid-column: 2; text-align: left; }
+  .orow { flex-wrap: wrap; padding: 0 12px 10px 0; gap: 8px; }
+  .orow-main { grid-template-columns: 54px 1fr; padding: 11px 0 0 12px; width: 100%; }
+  .orow-side { width: 100%; padding-left: 66px; justify-content: space-between; }
+  .osum { text-align: left; }
   .line { grid-template-columns: 1fr 56px 84px 30px; row-gap: 6px; }
   .line.withdays { grid-template-columns: 1fr 48px 48px 72px 30px; }
   .amt { grid-column: 1 / -1; text-align: right; }

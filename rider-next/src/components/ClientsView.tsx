@@ -46,10 +46,13 @@ export default function ClientsView({
   }
 
   const totalOrders = cs.reduce((s, c) => s + c.orders, 0);
-  const totals = { UAH: cs.reduce((s, c) => s + c.UAH, 0), USD: cs.reduce((s, c) => s + c.USD, 0) };
-  const net = { UAH: cs.reduce((s, c) => s + c.netUAH, 0), USD: cs.reduce((s, c) => s + c.netUSD, 0) };
+  const totals = cs.reduce((s, c) => s + c.UAH, 0);
+  const net = cs.reduce((s, c) => s + c.netUAH, 0);
   // Порядок за доходом; долар зважений грубо, лише щоб відсортувати рядки
-  const byRev = [...cs].sort((a, b) => b.netUAH + b.netUSD * 40 - (a.netUAH + a.netUSD * 40) || b.orders - a.orders);
+  // Постійні завжди зверху — саме їх дивишся найчастіше; далі за чистими.
+  const byRev = [...cs].sort(
+    (a, b) => Number(b.client?.regular) - Number(a.client?.regular) || b.netUAH - a.netUAH || b.orders - a.orders,
+  );
   const worked = byRev.filter((c) => c.orders > 0);
   const top = worked[0] ?? byRev[0];
   const topShare = totalOrders && top ? Math.round((top.orders / totalOrders) * 100) : 0;
@@ -112,7 +115,6 @@ export default function ClientsView({
                 <th style={{ width: 180 }}>Частка замовлень</th>
                 <th className="n">Замовлень</th>
                 <th className="n">Чистими ₴</th>
-                <th className="n">Чистими $</th>
                 <th className="n">Останнє</th>
               </tr>
             </thead>
@@ -144,10 +146,6 @@ export default function ClientsView({
                       {c.netUAH ? num(c.netUAH) : "—"}
                       {c.UAH !== c.netUAH ? <div className="hint mono" style={{ fontSize: 11 }}>оборот {num(c.UAH)}</div> : null}
                     </td>
-                    <td className="n">
-                      {c.netUSD ? num(c.netUSD) : "—"}
-                      {c.USD !== c.netUSD ? <div className="hint mono" style={{ fontSize: 11 }}>оборот {num(c.USD)}</div> : null}
-                    </td>
                     <td className="n" style={{ color: (c.idleDays ?? 0) > 90 ? "var(--warn)" : "var(--ink-2)" }}>
                       {c.idleDays == null ? "—" : `${c.idleDays} ${plural(c.idleDays, "день", "дні", "днів")} тому`}
                     </td>
@@ -160,8 +158,8 @@ export default function ClientsView({
       </div>
 
       <p className="hint">
-        Чистими разом: {money(net.UAH, "UAH")} · {money(net.USD, "USD")}
-        {(totals.UAH !== net.UAH || totals.USD !== net.USD) && ` · оборот ${money(totals.UAH, "UAH")} · ${money(totals.USD, "USD")}`}
+        Чистими разом: {money(net, "UAH")}
+        {totals !== net && ` · оборот ${money(totals, "UAH")}`}
         {loose.length > 0 && ` · ${loose.length} ${plural(loose.length, "замовник", "замовники", "замовників")} без картки — заведи картку з тією самою назвою, і рядки зіллються`}
       </p>
     </>

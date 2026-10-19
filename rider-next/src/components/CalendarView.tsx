@@ -52,8 +52,8 @@ export default function CalendarView({
     for (const d of orderDates(o)) if (inMonth(d)) busy.add(d);
   }
   const busyDays = busy.size;
-  const sums = { UAH: 0, USD: 0 };
-  for (const o of monthAll) if (o.status !== "cancelled") sums[o.currency] += orderTotal(o);
+  let sums = 0;
+  for (const o of monthAll) if (o.status !== "cancelled") sums += orderTotal(o);
 
   const move = (step: number) => {
     if (step === 0) return setCursor({ y: now.getFullYear(), m: now.getMonth() });
@@ -128,7 +128,7 @@ export default function CalendarView({
             <div>
               <h2 className="sec">{MONTH_NOM[cursor.m]} — список</h2>
               <p className="sec-sub">
-                {[sums.UAH ? money(sums.UAH, "UAH") : null, sums.USD ? money(sums.USD, "USD") : null].filter(Boolean).join(" · ") || "без сум"}
+                {sums ? money(sums, "UAH") : "без сум"}
               </p>
             </div>
           </div>

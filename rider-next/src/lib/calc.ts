@@ -240,6 +240,22 @@ export type MonthBucket = {
   cancelled: number;
 };
 
+/**
+ * Помісячні стовпчики за довільний відрізок — від першого числа місяця, у який
+ * падає from, до місяця, у який падає to. Потрібно для періоду в аналітиці:
+ * «останні 12 місяців» було б неправдою, коли вибрано свій діапазон.
+ */
+export function monthlyRange(orders: Order[], from: string, to: string, mode: MoneyMode = "done"): MonthBucket[] {
+  const a = new Date(from);
+  const b = new Date(to);
+  const out: MonthBucket[] = [];
+  // Понад 36 стовпчиків на графіку вже не читаються, тож обрізаємо хвіст
+  for (let d = new Date(a.getFullYear(), a.getMonth(), 1); d <= b && out.length < 36; d.setMonth(d.getMonth() + 1)) {
+    out.push({ y: d.getFullYear(), m: d.getMonth(), label: MONTHS[d.getMonth()], count: 0, UAH: 0, USD: 0, netUAH: 0, netUSD: 0, cancelled: 0 });
+  }
+  return fillBuckets(out, orders, mode);
+}
+
 export function monthlySeries(orders: Order[], months: number, mode: MoneyMode = "done"): MonthBucket[] {
   const now = new Date();
   const out: MonthBucket[] = [];
@@ -247,6 +263,10 @@ export function monthlySeries(orders: Order[], months: number, mode: MoneyMode =
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     out.push({ y: d.getFullYear(), m: d.getMonth(), label: MONTHS[d.getMonth()], count: 0, UAH: 0, USD: 0, netUAH: 0, netUSD: 0, cancelled: 0 });
   }
+  return fillBuckets(out, orders, mode);
+}
+
+function fillBuckets(out: MonthBucket[], orders: Order[], mode: MoneyMode): MonthBucket[] {
   for (const o of orders) {
     if (!o.date) continue;
     const d = new Date(o.date);
